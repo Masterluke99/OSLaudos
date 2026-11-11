@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Acqua TEC | Sistema de Gestão</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root {
+            --teal: #0083a3;
+            --deep: #005f77;
+            --pale: #eaf6f8;
+            --bg: #f3f7f7;
+            --ink: #253438;
+            --muted: #718185;
+            --line: #e1e9e9;
+            --white: #fff;
+            --green: #18794e;
+            --red: #b54747;
+            --shadow: 0 5px 22px #183c4310
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--ink);
+            font: 14px/1.5 "Segoe UI", Arial, sans-serif
+        }
+
+        button,
+        input,
+        select,
+        textarea {
+            font: inherit
+        }
+
+        button {
+            cursor: pointer
+        }
+
+        .layout {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 245px 1fr
+        }
+
+        .side {
+            background: white;
+            border-right: 1px solid var(--line);
+            padding: 23px 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0 8px
+        }
+
+        .brandmark {
+            height: 42px;
+            width: 42px;
+            border: 2px solid #8dd2df;
+            color: var(--teal);
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            font-size: 24px
+        }
+
+        .brand b {
+            display: block;
+            color: var(--teal);
+            font-size: 17px
+        }
+
+        .brand small {
+            font-size: 9px;
+            letter-spacing: 2px;
+            color: #8b999b;
+            font-weight: bold
+        }
+
+        .navlabel {
+            font-size: 10px;
+            color: #9aa7a9;
+            letter-spacing: 1.4px;
+            font-weight: bold;
+            padding: 0 10px;
+            margin-bottom: 7px
+        }
+
+        .nav {
+            display: grid;
+            gap: 4px
+        }
+
+        .nav button {
+            border: 0;
+            background: none;
+            text-align: left;
+            color: #647477;
+            padding: 11px;
+            border-radius: 9px;
+            font-weight: 600
+        }
+
+        .nav button:hover,
+        .nav button.active {
+            background: var(--pale);
+            color: var(--deep)
+        }
+
+        .nav button span {
+            display: inline-block;
+            width: 27px;
+            color: var(--teal)
+        }
+
+        .sidefoot {
+            margin-top: auto;
+            border-top: 1px solid var(--line);
+            padding: 15px 8px 0;
+            color: #91a0a2;
+            font-size: 11px
+        }
+
+        main {
+            padding: 27px 34px;
+            max-width: 1500px;
+            width: 100%;
+            margin: auto;
+            min-width: 0
+        }
+
+        .top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            color: #879597;
+            font-size: 12px
+        }
+
+        .top strong {
+            color: var(--deep)
+        }
+
+        .top button {
+            border: 1px solid var(--line);
+            background: white;
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: #526164
+        }
+
+        .view {
+            display: none
+        }
+
+        .view.active {
+            display: block
+        }
+
+        .heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 15px;
+            margin-bottom: 20px
+        }
+
+        .eyebrow {
+            font-size: 10px;
+            color: var(--teal);
+            font-weight: bold;
+            letter-spacing: 1.6px;
+            text-transform: uppercase
+        }
+
+        h1 {
+            font-size: 27px;
+            letter-spacing: -.6px;
+            margin: 4px 0
+        }
+
+        .sub {
+            color: var(--muted);
+            margin: 0;
+            font-size: 13px
+        }
+
+        .btn {
+            border: 1px solid var(--line);
+            background: white;
+            color: #4f6064;
+            padding: 9px 13px;
+            border-radius: 8px;
+            font-weight: 650;
+            font-size: 12px
+        }
+
+        .btn.primary {
+            background: var(--teal);
+            border-color: var(--teal);
+            color: white
+        }
+
+        .btn.primary:hover {
+            background: var(--deep)
+        }
+
+        .btn.danger {
+            color: var(--red)
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 13px;
+            margin-bottom: 17px
+        }
+
+        .card {
+            background: white;
+            border: 1px solid var(--line);
+            border-radius: 13px;
+            box-shadow: var(--shadow);
+            padding: 17px
+        }
+
+        .metric small {
+            color: #829194
+        }
+
+        .metric b {
+            display: block;
+            font-size: 28px;
+            margin: 6px 0 0
+        }
+
+        .metric em {
+            font-style: normal;
+            color: #9aa6a8;
+            font-size: 10px
+        }
+
+        .cols {
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 15px
+        }
+
+        .cardhead {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px
+        }
+
+        .cardhead b {
+            font-size: 14px
+        }
+
+        .cardhead small {
+            display: block;
+            color: #95a1a3;
+            font-size: 11px
+        }
+
+        .quick {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 9px
+        }
+
+        .quick button {
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: #fff;
+            padding: 14px;
+            text-align: left;
+            color: var(--ink)
+        }
+
+        .quick button:hover {
+            border-color: #91d0dc;
+            background: #fbffff
+        }
+
+        .quick strong {
+            display: block;
+            font-size: 12px
+        }
+
+        .quick small {
+            font-size: 10px;
+            color: #8d9a9c
+        }
+
+        .quick i {
+            font-style: normal;
+            color: var(--teal);
+            font-size: 20px;
+            display: block;
+            margin-bottom: 7px
+        }
+
+        .notice {
+            padding: 13px;
+            background: #eff9fa;
+            border: 1px solid #d7edf0;
+            border-radius: 9px;
+            color: #50676c;
+            font-size: 12px;
+            margin-top: 10px
+        }
+
+        .notice b {
+            color: var(--deep)
+        }
+
+        .panel {
+            background: white;
+            border: 1px solid var(--line);
+            border-radius: 13px;
+            padding: 19px;
+            box-shadow: var(--shadow);
+            margin-bottom: 15px
+        }
+
+        label {
+            display: block;
+            font-size: 11px;
+            color: #52676b;
+            font-weight: 700;
+            margin: 0 0 6px
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #dce5e6;
+            border-radius: 8px;
+            background: #fff;
+            color: var(--ink);
+            outline: none
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: #68b9c8;
+            box-shadow: 0 0 0 3px #0083a315
+        }
+
+        .formgrid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 13px
+        }
+
+        .field.full {
+            grid-column: 1/-1
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 14px
+        }
+
+        .hint {
+            color: #879597;
+            font-size: 11px;
+            margin: 7px 0 0
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 12px
+        }
+
+        th {
+            text-align: left;
+            color: #899799;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            padding: 10px;
+            border-bottom: 1px solid var(--line)
+        }
+
+        td {
+            padding: 11px 10px;
+            border-bottom: 1px solid #edf1f1;
+            color: #526164
+        }
+
+        td b {
+            color: #2e4145
+        }
+
+        tr:last-child td {
+            border-bottom: 0
+        }
+
+        .tablewrap {
+            overflow: auto
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 20px;
+            background: #eaf6f8;
+            color: var(--deep);
+            font-size: 10px;
+            font-weight: bold
+        }
+
+        .tag.ok {
+            background: #eaf6ef;
+            color: var(--green)
+        }
+
+        .tag.warn {
+            background: #fff4e4;
+            color: #94600d
+        }
+
+        .empty {
+            text-align: center;
+            padding: 25px;
+            color: #93a0a2;
+            font-size: 12px
+        }
+
+        .statusbox {
+            display: none;
+            margin-top: 13px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 12px
+        }
+
+        .statusbox.ok {
+            display: block;
+            background: #eaf6ef;
+            color: #17613f
+        }
+
+        .statusbox.err {
+            display: block;
+            background: #fff0f0;
+            color: #9c3535
+        }
+
+        .step {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            margin: 12px 0;
+            color: #647477;
+            font-size: 12px
+        }
+
+        .step b {
+            color: var(--deep)
+        }
+
+        .stepnum {
+            height: 24px;
+            width: 24px;
+            flex: none;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background: var(--pale);
+            color: var(--deep);
+            font-weight: bold
+        }
+
+        .checktable select {
+            min-width: 210px
+        }
+
+        .muted {
+            color: #8a999b
+        }
+
+        .foot {
+            text-align: center;
+            color: #a0acad;
+            font-size: 10px;
+            padding: 20px 0
+        }
+
+        @media(max-width:950px) {
+            .layout {
+                grid-template-columns: 205px 1fr
+            }
+
+            main {
+                padding: 22px
+            }
+
+            .grid {
+                grid-template-columns: repeat(2, 1fr)
+            }
+
+            .cols {
+                grid-template-columns: 1fr
+            }
+        }
+
+        @media(max-width:700px) {
+            .layout {
+                display: block
+            }
+
+            .side {
+                padding: 12px;
+                gap: 12px;
+                border: 0;
+                border-bottom: 1px solid var(--line)
+            }
+
+            .nav {
+                display: flex;
+                overflow: auto
+            }
+
+            .nav button {
+                white-space: nowrap;
+                font-size: 11px;
+                padding: 9px
+            }
+
+            .navlabel,
+            .sidefoot {
+                display: none
+            }
+
+            .side>div:nth-child(2) {
+                min-width: 0
+            }
+
+            main {
+                padding: 18px 13px
+            }
+
+            .heading {
+                align-items: flex-start;
+                flex-direction: column
+            }
+
+            h1 {
+                font-size: 23px
+            }
+
+            .formgrid {
+                grid-template-columns: 1fr
+            }
+
+            .field.full {
+                grid-column: auto
+            }
+
+            .panel {
+                padding: 14px
+            }
+
+            .top {
+                margin-bottom: 18px
+            }
+        }
+
+        /* LOGO ACQUA TEC */
+        .brand {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0 5px;
+        }
+
+        .brand img {
+            width: 100%;
+            max-width: 190px;
+            height: 130px;
+            object-fit: contain;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="layout">
+        <aside class="side">
+            <div class="brand">
+                <img id="logoAcquaTec" src="./logo.png" alt="Acqua TEC Análises">
+            </div>
+            <div>
+                <div class="navlabel">SISTEMA</div>
+                <nav class="nav">
+                    <button class="active" data-page="inicio"><span>⌂</span>Visão geral</button>
+                    <button data-page="clientes"><span>♙</span>Clientes</button>
+                    <button data-page="laudos"><span>▤</span>Gerador de laudos</button>
+                    <button data-page="dados"><span>▦</span>Dados e backup</button>
+                </nav>
+            </div>
+            <div class="sidefoot">Sistema local · Os dados ficam neste navegador.<br><br>Acqua TEC Análises</div>
+        </aside>
+        <main>
+            <div class="top">
+                <div>Acqua TEC / <strong id="breadcrumb">Visão geral</strong></div>
+                <div id="clock"></div>
+            </div>
+            <section class="view active" id="page-inicio">
+                <div class="heading">
+                    <div>
+                        <div class="eyebrow">Central administrativa</div>
+                        <h1>Visão geral</h1>
+                        <p class="sub">Bem-vindo ao ambiente de gestão da Acqua TEC.</p>
+                    </div><button class="btn primary" onclick="go('laudos')">＋ Gerar laudos</button>
+                </div>
+                <div class="grid">
+                    <div class="card metric"><small>Clientes cadastrados</small><b id="mClientes">0</b><em>Na base
+                            local</em></div>
+                    <div class="card metric"><small>Registros de medições</small><b id="mMedicoes">0</b><em>Importados
+                            nesta sessão</em></div>
+                    <div class="card metric"><small>Laudos gerados</small><b id="mLaudos">0</b><em>Neste navegador</em>
+                    </div>
+                    <div class="card metric"><small>Próxima etapa</small><b
+                            style="font-size:17px;margin-top:14px">Conferência</b><em>Vincular e emitir documentos</em>
+                    </div>
+                </div>
+                <div class="cols">
+                    <div class="panel">
+                        <div class="cardhead">
+                            <div><b>Fluxo de trabalho</b><small>Da importação à emissão do documento</small></div>
+                        </div>
+                        <div class="step"><span class="stepnum">1</span>
+                            <div><b>Cadastro de clientes</b><br>Importe a planilha CSV ou cadastre os clientes
+                                individualmente.</div>
+                        </div>
+                        <div class="step"><span class="stepnum">2</span>
+                            <div><b>Medições semanais</b><br>Carregue o CSV com os resultados coletados.</div>
+                        </div>
+                        <div class="step"><span class="stepnum">3</span>
+                            <div><b>Conferência dos vínculos</b><br>Revise a associação entre os nomes das medições e os
+                                clientes cadastrados.</div>
+                        </div>
+                        <div class="step"><span class="stepnum">4</span>
+                            <div><b>Geração dos PDFs</b><br>Emita os laudos individuais e baixe o pacote ZIP.</div>
+                        </div>
+                        <div class="notice"><b>Armazenamento local:</b> os cadastros ficam salvos neste navegador. Faça
+                            backup regularmente em Dados e backup.</div>
+                    </div>
+                    <div class="panel">
+                        <div class="cardhead">
+                            <div><b>Acesso rápido</b><small>Atalhos operacionais</small></div>
+                        </div>
+                        <div class="quick">
+                            <button onclick="go('clientes')"><i>♙</i><strong>Clientes</strong><small>Ver e
+                                    cadastrar</small></button>
+                            <button onclick="go('laudos')"><i>▤</i><strong>Gerar laudos</strong><small>Importar
+                                    medições</small></button>
+                            <button onclick="go('dados')"><i>⇧</i><strong>Backup</strong><small>Exportar
+                                    cadastros</small></button>
+                            <button onclick="go('dados')"><i>⇩</i><strong>Restaurar</strong><small>Importar
+                                    backup</small></button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section class="view" id="page-clientes">
+                <div class="heading">
+                    <div>
+                        <div class="eyebrow">Base de dados</div>
+                        <h1>Clientes</h1>
+                        <p class="sub">Cadastre e mantenha os dados usados na identificação dos laudos.</p>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="cardhead">
+                        <div><b id="formTitle">Cadastrar cliente</b><small>Os campos seguem o cadastro utilizado pelo
+                                gerador atual.</small></div>
+                    </div>
+                    <form id="clientForm"><input type="hidden" id="editId">
+                        <div class="formgrid">
+                            <div class="field"><label>Nome / Razão social *</label><input id="cCliente" required
+                                    placeholder="Ex.: Condomínio Residencial Alfa"></div>
+                            <div class="field"><label>CNPJ</label><input id="cCNPJ" placeholder="00.000.000/0000-00">
+                            </div>
+                            <div class="field"><label>Endereço</label><input id="cEndereco"
+                                    placeholder="Endereço completo"></div>
+                            <div class="field"><label>Responsável técnico</label><input id="cRT"
+                                    placeholder="Nome do responsável técnico"></div>
+                        </div>
+                        <div class="actions"><button class="btn primary" type="submit">Salvar cliente</button><button
+                                class="btn" type="button" onclick="resetClient()">Limpar</button><label class="btn"
+                                style="margin:0;display:inline-flex;align-items:center">Importar CSV<input type="file"
+                                    id="clientCsv" accept=".csv" hidden></label></div>
+                        <p class="hint">Colunas do CSV: Nome (ou Cliente), CNPJ, Endereco e Responsavel_Tecnico.</p>
+                        <div id="clientStatus" class="statusbox"></div>
+                    </form>
+                </div>
+                <div class="panel">
+                    <div class="cardhead" style="flex-wrap:wrap">
+                        <div><b>Clientes cadastrados</b><small id="clientCount">0 registros</small></div>
+                        <div class="actions" style="margin:0;align-items:center"><button class="btn" type="button"
+                                onclick="downloadClientCSV()">⇩ Exportar cadastro CSV</button><label class="btn"
+                                style="margin:0;display:inline-flex;align-items:center">⇧ Importar CSV<input type="file"
+                                    id="clientCsvList" accept=".csv" hidden></label><input id="filterClients"
+                                style="max-width:200px" placeholder="Buscar cliente..." oninput="renderClients()"></div>
+                    </div>
+                    <div class="tablewrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nome / Razão social</th>
+                                    <th>CNPJ</th>
+                                    <th>Endereço</th>
+                                    <th>Responsável técnico</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="clientsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+            <section class="view" id="page-laudos">
+                <div class="heading">
+                    <div>
+                        <div class="eyebrow">Documentação técnica</div>
+                        <h1>Gerador de laudos</h1>
+                        <p class="sub">Importe os arquivos, confira os vínculos e gere os PDFs individuais.</p>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="step"><span class="stepnum">1</span>
+                        <div><b>Cadastro de clientes (CSV)</b><br>Use o cadastro completo para preencher endereço,
+                            telefone e dados técnicos.</div>
+                    </div>
+                    <div class="formgrid">
+                        <div class="field"><label>Arquivo de cadastro (.CSV)</label><input type="file" id="cadastroFile"
+                                accept=".csv"></div>
+                        <div class="field"><label>Medições da semana (.CSV)</label><input type="file" id="medicoesFile"
+                                accept=".csv"></div>
+                    </div>
+                    <div class="actions"><button class="btn" id="loadClients">Usar clientes já
+                            cadastrados</button><button class="btn primary" id="prepare">Carregar e conferir
+                            medições</button></div>
+                    <p class="hint">O arquivo de medições deve conter a coluna Cliente e os campos de parâmetros usados
+                        no seu formulário de coleta.</p>
+                    <div id="importStatus" class="statusbox"></div>
+                </div>
+                <div class="panel" id="mappingPanel" style="display:none">
+                    <div class="cardhead">
+                        <div><b>2. Conferência e vínculo de clientes</b><small>Revise os nomes e selecione o cadastro
+                                correto quando necessário.</small></div><span class="tag" id="rowsCount">0 linhas</span>
+                    </div>
+                    <div class="tablewrap">
+                        <table class="checktable">
+                            <thead>
+                                <tr>
+                                    <th>Linha</th>
+                                    <th>Nome na planilha semanal</th>
+                                    <th>Cadastro vinculado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mappingBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="actions"><button class="btn primary" id="generate">Gerar e baixar pacote de PDFs
+                            (.ZIP)</button></div>
+                    <div id="generateStatus" class="statusbox"></div>
+                </div>
+                <div class="panel">
+                    <div class="cardhead">
+                        <div><b>Histórico local de geração</b><small>Registro de pacotes emitidos neste
+                                navegador.</small></div>
+                    </div>
+                    <div id="history" class="empty">Nenhum pacote gerado nesta sessão.</div>
+                </div>
+            </section>
+            <section class="view" id="page-dados">
+                <div class="heading">
+                    <div>
+                        <div class="eyebrow">Segurança dos dados</div>
+                        <h1>Dados e backup</h1>
+                        <p class="sub">Exporte ou restaure sua base de clientes armazenada no navegador.</p>
+                    </div>
+                </div>
+                <div class="panel"><b>Backup dos cadastros</b>
+                    <p class="sub">Baixe um arquivo JSON com os clientes cadastrados. Guarde-o em local seguro e faça
+                        novas cópias após alterações importantes.</p>
+                    <div class="actions"><button class="btn primary" onclick="exportBackup()">⇩ Exportar
+                            backup</button><label class="btn"
+                            style="margin:0;display:inline-flex;align-items:center">Importar backup<input type="file"
+                                id="restoreFile" accept=".json" hidden></label></div>
+                    <div id="backupStatus" class="statusbox"></div>
+                </div>
+                <div class="panel"><b>Como os dados funcionam</b>
+                    <p class="sub">Esta versão salva os clientes no armazenamento local do navegador (localStorage). Não
+                        há envio automático para a internet, sincronização entre computadores ou acesso multiusuário.
+                        Limpar os dados do navegador pode apagar os cadastros; por isso, mantenha backups.</p>
+                    <div class="notice">Os arquivos CSV e os PDFs são processados no próprio navegador. A geração de
+                        PDF/ZIP utiliza bibliotecas carregadas por CDN e, portanto, precisa de conexão com a internet
+                        para carregar essas bibliotecas.</div>
+                </div>
+            </section>
+            <div class="foot">Acqua TEC Análises · Sistema administrativo local · Versão inicial</div>
+        </main>
+    </div>
+    <script>
+        const KEY = 'acquatec_clientes_v1';
+        let clients = loadClients(), measurements = [], mapping = [], generated = 0;
+        function loadClients() { try { return JSON.parse(localStorage.getItem(KEY) || '[]') } catch { return [] } }
+        function saveClients() { localStorage.setItem(KEY, JSON.stringify(clients)); updateMetrics(); renderClients() }
+        function updateMetrics() {
+            document.getElementById('mClientes').textContent = clients.length;
+            document.getElementById('mMedicoes').textContent = measurements.length; document.getElementById('mLaudos').textContent = generated
+        }
+        function go(p) {
+            document.querySelectorAll('.view').forEach(x => x.classList.remove('active'));
+            document.getElementById('page-' + p).classList.add('active'); document.querySelectorAll('.nav button').forEach(x => x.classList.toggle('active', x.dataset.page === p));
+            document.getElementById('breadcrumb').textContent = ({ inicio: 'Visão geral', clientes: 'Clientes', laudos: 'Gerador de laudos', dados: 'Dados e backup' })[p]
+        }
+        document.querySelectorAll('.nav button').forEach(b => b.onclick = () => go(b.dataset.page));
+        document.getElementById('clock').textContent = new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' });
+        function msg(id, text, type = 'ok') { let e = document.getElementById(id); e.className = 'statusbox ' + type; e.textContent = text }
+        function norm(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim() }
+        function parseCSV(text) {
+            let rows = [], row = [], field = '', quoted = false;
+            text = text.replace(/^\uFEFF/, '');
+            for (let i = 0; i < text.length; i++) {
+                let c = text[i], n = text[i + 1];
+                if (c === '"' && quoted && n === '"') { field += '"'; i++ } else if (c === '"') { quoted = !quoted } else if ((c === ',' || c === ';' || c === '\t') && !quoted) { row.push(field.trim()); field = '' }
+                else if ((c === '\n' || c === '\r') && !quoted) { if (c === '\r' && n === '\n') i++; row.push(field.trim()); if (row.some(x => x !== '')) rows.push(row); row = []; field = '' } else field += c
+            }
+            row.push(field.trim()); if (row.some(x => x !== '')) rows.push(row); if (!rows.length) return [];
+            const headers = rows.shift().map(x => x.trim());
+            return rows.map(r => Object.fromEntries(headers.map((h, i) => [h, (r[i] || '').trim()])));
+        }
+        function val(o, ...keys) { for (let k of keys) { let found = Object.keys(o || {}).find(x => norm(x) === norm(k)); if (found !== undefined) return o[found] } return '' }
+        function fromRow(r) { return { id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()), Cliente: val(r, 'Nome', 'Razao Social', 'Razão Social', 'Cliente'), CNPJ: val(r, 'CNPJ'), Endereco: val(r, 'Endereco', 'Endereço'), Responsavel_Tecnico: val(r, 'Responsavel_Tecnico', 'Responsável Técnico') } }
+        document.getElementById('clientForm').onsubmit = e => {
+            e.preventDefault(); let id = document.getElementById('editId').value; let c = { id: id || String(Date.now()), Cliente: cCliente.value.trim(), CNPJ: cCNPJ.value.trim(), Endereco: cEndereco.value.trim(), Responsavel_Tecnico: cRT.value.trim() };
+            let i = clients.findIndex(x => x.id === id); if (i >= 0) clients[i] = c; else clients.push(c); saveClients(); resetClient(); msg('clientStatus', 'Cliente salvo com sucesso.')
+        };
+        function resetClient() { document.getElementById('clientForm').reset(); document.getElementById('editId').value = ''; document.getElementById('formTitle').textContent = 'Cadastrar cliente' }
+        function renderClients() { let q = norm(document.getElementById('filterClients').value), list = clients.filter(c => norm(c.Cliente).includes(q) || norm(c.Endereco).includes(q)); document.getElementById('clientCount').textContent = clients.length + ' registros'; let b = document.getElementById('clientsBody'); b.innerHTML = ''; if (!list.length) { b.innerHTML = '<tr><td colspan="5" class="empty">Nenhum cliente encontrado.</td></tr>'; return } list.forEach(c => { let tr = document.createElement('tr'); tr.innerHTML = `<td><b>${esc(c.Cliente)}</b></td><td>${esc(c.CNPJ || '—')}</td><td>${esc(c.Endereco || '—')}</td><td>${esc(c.Responsavel_Tecnico || '—')}</td><td><button class="btn" onclick="editClient('${c.id}')">Editar</button> <button class="btn danger" onclick="deleteClient('${c.id}')">Excluir</button></td>`; b.appendChild(tr) }) }
+        function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])) }
+        function editClient(id) { let c = clients.find(x => x.id === id); if (!c) return; editId.value = c.id; cCliente.value = c.Cliente; cCNPJ.value = c.CNPJ || ''; cEndereco.value = c.Endereco; cRT.value = c.Responsavel_Tecnico; formTitle.textContent = 'Editar cliente'; window.scrollTo({ top: 0, behavior: 'smooth' }) }
+        function deleteClient(id) { if (confirm('Excluir este cliente do cadastro local?')) { clients = clients.filter(x => x.id !== id); saveClients() } }
+        document.getElementById('clientCsv').onchange = async e => { let f = e.target.files[0]; if (!f) return; try { let rows = parseCSV(await f.text()); let imported = rows.map(fromRow).filter(x => x.Cliente); for (let c of imported) { let old = clients.find(x => norm(x.Cliente) === norm(c.Cliente)); if (old) Object.assign(old, c, { id: old.id }); else clients.push(c) } saveClients(); msg('clientStatus', imported.length + ' clientes importados/atualizados.') } catch (err) { msg('clientStatus', 'Erro ao ler CSV: ' + err.message, 'err') } e.target.value = '' };
+        document.getElementById('loadClients').onclick = () => { if (!clients.length) { msg('importStatus', 'Ainda não há clientes cadastrados. Importe um CSV ou cadastre na seção Clientes.', 'err'); return } document.getElementById('cadastroFile').value = ''; msg('importStatus', clients.length + ' clientes carregados da base local.') };
+        document.getElementById('prepare').onclick = async () => {
+            let cf = document.getElementById('cadastroFile').files[0], mf = document.getElementById('medicoesFile').files[0];
+            try {
+                if (cf) { let rows = parseCSV(await cf.text()); let imported = rows.map(fromRow).filter(x => x.Cliente); for (let c of imported) { let old = clients.find(x => norm(x.Cliente) === norm(c.Cliente)); if (old) Object.assign(old, c, { id: old.id }); else clients.push(c) } saveClients() }
+                if (!clients.length) throw Error('Cadastre ou importe os clientes antes de continuar.');
+                if (!mf) throw Error('Selecione o CSV das medições semanais.');
+                measurements = parseCSV(await mf.text()); if (!measurements.length) throw Error('O arquivo de medições está vazio ou não foi reconhecido.');
+                buildMapping(); msg('importStatus', `${measurements.length} medições carregadas. Confira os vínculos abaixo.`); document.getElementById('mappingPanel').style.display = 'block'; document.getElementById('rowsCount').textContent = measurements.length + ' linhas'; updateMetrics();
+            } catch (err) { msg('importStatus', err.message, 'err') }
+        };
+        function bestMatch(name) { let n = norm(name); let exact = clients.find(c => norm(c.Cliente) === n); if (exact) return exact.id; let partial = clients.find(c => n && (n.includes(norm(c.Cliente)) || norm(c.Cliente).includes(n))); return partial ? partial.id : '' }
+        function buildMapping() { mapping = measurements.map(r => bestMatch(val(r, 'Cliente'))); let body = document.getElementById('mappingBody'); body.innerHTML = ''; measurements.forEach((r, i) => { let tr = document.createElement('tr'), opts = '<option value="">— Selecione o cliente —</option>' + clients.map(c => `<option value="${esc(c.id)}" ${mapping[i] === c.id ? 'selected' : ''}>${esc(c.Cliente)}${c.Endereco ? ' · ' + esc(c.Endereco) : ''}</option>`).join(''); tr.innerHTML = `<td>${i + 1}</td><td><b>${esc(val(r, 'Cliente') || 'Não informado')}</b></td><td><select data-index="${i}">${opts}</select></td>`; body.appendChild(tr) }); body.querySelectorAll('select').forEach(s => s.onchange = () => mapping[Number(s.dataset.index)] = s.value) }
+        function parseNum(v) { return parseFloat(String(v ?? '').replace(',', '.')) }
+        function diagnose(v, min, max) { let n = parseNum(v); if (!String(v ?? '').trim() || Number.isNaN(n)) return 'Não informado'; return n >= min && n <= max ? 'Conforme' : 'Fora do Padrão' }
+        function dateInfo(row) { let raw = val(row, 'Carimbo de data/hora', 'Data/Hora', 'Data'); let d = new Date(); if (raw) { let m = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/); if (m) d = new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0)); else { let p = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})/); if (p) d = new Date(+p[3], +p[2] - 1, +p[1]) } } let next = new Date(d); next.setDate(next.getDate() + 7); let fmt = x => x.toLocaleDateString('pt-BR'); return { date: fmt(d), time: d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h'), next: fmt(next) } }
+        document.getElementById('generate').onclick = async () => {
+            let status = document.getElementById('generateStatus');
+            try {
+                if (!window.jspdf || !window.JSZip) throw Error('As bibliotecas de PDF/ZIP não carregaram. Verifique a conexão com a internet e recarregue a página.');
+                if (!measurements.length) throw Error('Importe as medições antes de gerar.');
+                if (mapping.some(x => !x)) throw Error('Há linhas sem cliente vinculado. Confira todas as associações.');
+                if (!confirm(`Gerar ${measurements.length} laudo(s) em PDF e baixar um pacote ZIP?`)) return;
+                msg('generateStatus', 'Gerando documentos. Aguarde...');
+                const { jsPDF } = window.jspdf, zip = new JSZip();
+                const logoBase64 = await obterLogoBase64();
+                measurements.forEach((row, index) => {
+                    let client = clients.find(c => c.id === mapping[index]) || {}, d = dateInfo(row);
+                    const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'letter' }); doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 131, 163); doc.addImage(logoBase64, 'PNG', 15, 8, 42, 28); doc.setFontSize(13);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(0, 131, 163);
+
+                    doc.text('RELATÓRIO E MONITORAMENTO', 120, 19, { align: 'center' });
+                    doc.text('DA QUALIDADE DA ÁGUA', 120, 26, { align: 'center' });;
+                    doc.setFontSize(10); doc.setTextColor(51, 51, 51);
+                    const line = (label, value, y, lx = 15, vx = 45) => { doc.setFont('helvetica', 'bold'); doc.text(label, lx, y); doc.setFont('helvetica', 'normal'); doc.text(String(value || 'Não informado'), vx, y, { maxWidth: 155 }) };
+                    line('Cliente:', client.Cliente, 34, 15, 30); line('Endereço:', client.Endereco, 40, 15, 34); line('CNPJ:', client.CNPJ, 46, 15, 27); line('Local da Coleta:', val(row, 'Local_Coleta', 'Local de Coleta') || 'Piscina Adulto', 52, 15, 44); line('Data / Hora:', d.date + ' às ' + d.time, 58, 15, 37); line('Responsável Técnico:', client.Responsavel_Tecnico || 'Não informado', 64, 15, 53);
+                    doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 131, 163); doc.text('RESULTADOS DA ANÁLISE', 15, 82);
+                    doc.setFillColor(0, 131, 163); doc.rect(15, 86, 185, 8, 'F'); doc.setTextColor(255, 255, 255); doc.text('Parâmetro', 18, 91.5); doc.text('Resultados', 70, 91.5); doc.text('Valor de Referência', 115, 91.5); doc.text('Diagnóstico', 165, 91.5);
+                    const chlorine = val(row, 'Cloro Livre'), ph = val(row, 'PH', 'pH'), alk = val(row, 'Alcalinidade'), hard = val(row, 'Dureza Total', 'Dureza Cálcica'), temp = val(row, 'Temperatura'), visual = val(row, 'Aspecto Visual');
+                    const params = [{ n: 'Cloro Livre', v: chlorine, ref: '1.0 – 3.0', diag: diagnose(chlorine, 1, 3) }, { n: 'PH', v: ph, ref: '7.4 – 7.8', diag: diagnose(ph, 7.4, 7.8) }, { n: 'Alcalinidade', v: alk, ref: '80 - 120', diag: diagnose(alk, 80, 120) }, { n: 'Dureza Cálcica', v: hard, ref: '200 - 400', diag: diagnose(hard, 200, 400) }, { n: 'Temperatura', v: temp, ref: '26 - 32', diag: temp ? diagnose(temp, 26, 32) : 'Não informado' }, { n: 'Aspecto Visual', v: visual, ref: 'límpida', diag: visual ? (norm(visual).includes('limp') ? 'Conforme' : 'Verificar') : 'Não informado' }];
+                    let y = 94; doc.setFont('helvetica', 'normal'); params.forEach(p => { doc.setTextColor(51, 51, 51); doc.text(p.n, 18, y + 5); doc.text(String(p.v || 'Não informado'), 70, y + 5); doc.text(p.ref, 115, y + 5); doc.setFontSize(8.5); doc.text(p.diag, 165, y + 5); doc.setFontSize(10); doc.setDrawColor(224, 224, 224); doc.line(15, y + 8, 200, y + 8); y += 8 });
+                    y += 13; doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 131, 163); doc.text('AVALIAÇÃO TÉCNICA', 15, y); y += 6; doc.setFont('helvetica', 'normal'); doc.setTextColor(51, 51, 51);
+                    let note = val(row, 'Avaliação Técnica', 'Observações', 'Observacao'); let allOk = params.every(p => p.diag === 'Conforme'); let defaultText = allOk ? 'A água analisada apresentou parâmetros dentro das faixas recomendadas para utilização recreativa, não sendo observadas irregularidades que comprometam a segurança ou o conforto dos usuários.' : 'Foram identificados parâmetros que requerem avaliação. Consulte os resultados apresentados e registre as medidas corretivas pertinentes.';
+                    let split = doc.splitTextToSize((note ? note + ' ' : '') + (defaultText), 185); doc.text(split, 15, y); y += split.length * 5 + 7;
+                    doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 131, 163); doc.text('STATUS DA ÁGUA', 15, y); y += 6; doc.setFont('helvetica', 'normal'); doc.setTextColor(51, 51, 51); doc.text(allOk ? 'Piscina dentro dos padrões avaliados.' : 'Existem parâmetros não conformes ou não informados. Avaliação complementar necessária.', 15, y, { maxWidth: 185 }); y += 9;
+                    doc.setFont('helvetica', 'bold'); doc.text('Data da próxima análise: ' + d.next, 15, y);
+                    doc.setFontSize(10); doc.setTextColor(0, 131, 163); doc.text('________________ Acqua TEC Análises ________________', 108, 245, { align: 'center' });
+                    let safe = (client.Cliente || 'Cliente_' + (index + 1)).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9_-]+/g, '_');
+                    zip.file(`Laudo_${safe}.pdf`, doc.output('arraybuffer'));
+                });
+                const blob = await zip.generateAsync({ type: 'blob' }), url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = 'Pacote_Laudos_Acqua_TEC.zip'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 3000);
+                generated += measurements.length; updateMetrics();
+                let hist = JSON.parse(localStorage.getItem('acquatec_history') || '[]');
+                hist.unshift({ date: new Date().toLocaleString('pt-BR'), count: measurements.length });
+                localStorage.setItem('acquatec_history', JSON.stringify(hist));
+                renderHistory(); msg('generateStatus', 'Pacote ZIP gerado e baixado com ' + measurements.length + ' laudo(s).');
+            } catch (e) { msg('generateStatus', e.message, 'err') }
+        };
+        function renderHistory() {
+            let h = JSON.parse(localStorage.getItem('acquatec_history') || '[]'); document.getElementById('history').innerHTML = h.length ? h.map(x => `<div style="padding:9px 0;border-bottom:1px solid #edf1f1;font-size:12px"><b>${x.count} laudo(s)</b> <span class="muted">· ${x.date}</span></div>`).join('') : 'Nenhum pacote gerado nesta sessão.'
+        }
+
+        function csvCell(value) { let s = String(value ?? ''); return '"' + s.replace(/"/g, '""') + '"' }
+        function downloadClientCSV() {
+            const headers = ['Nome', 'CNPJ', 'Endereco', 'Responsavel_Tecnico'];
+            const lines = [headers.join(';'), ...clients.map(c => headers.map(h => csvCell(c[h] || '')).join(';'))];
+            const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob), a = document.createElement('a');
+            a.href = url; a.download = 'clientes_acquatec.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+        }
+
+        async function obterLogoBase64() {
+            const img = document.getElementById('logoAcquaTec');
+
+            if (!img) {
+                throw new Error('Elemento da logo não encontrado.');
+            }
+
+            if (!img.complete || !img.naturalWidth) {
+                await new Promise((resolve, reject) => {
+                    img.onload = resolve;
+                    img.onerror = () => reject(
+                        new Error('Não foi possível carregar a logo.')
+                    );
+                });
+            }
+
+            // Verifica se a imagem está acessível na mesma origem
+            const origemImagem = new URL(img.src).origin;
+
+            if (origemImagem !== window.location.origin) {
+                throw new Error(
+                    'A logo está em outro domínio. Utilize uma imagem local na pasta do sistema.'
+                );
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+
+            const ctx = canvas.getContext('2d');
+
+            if (!ctx) {
+                throw new Error('Não foi possível criar o Canvas.');
+            }
+
+            ctx.drawImage(img, 0, 0);
+
+            return canvas.toDataURL('image/png');
+
+
+        } document.getElementById('clientCsvList').onchange = async e => {
+            const f = e.target.files[0]; if (!f) return;
+            try {
+                const rows = parseCSV(await f.text()), imported = rows.map(fromRow).filter(c => c.Cliente);
+                for (const c of imported) { const old = clients.find(x => norm(x.Cliente) === norm(c.Cliente)); if (old) Object.assign(old, c, { id: old.id }); else clients.push(c) }
+                saveClients(); msg('clientStatus', imported.length + ' clientes importados/atualizados a partir do CSV.');
+            } catch (err) { msg('clientStatus', 'Erro ao importar CSV: ' + err.message, 'err') }
+            e.target.value = '';
+        };
+        function exportBackup() { let blob = new Blob([JSON.stringify({ app: 'Acqua TEC', version: 1, exportedAt: new Date().toISOString(), clients }, null, 2)], { type: 'application/json' }), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'backup_acquatec_clientes.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); msg('backupStatus', 'Backup exportado. Guarde o arquivo em local seguro.') }
+        document.getElementById('restoreFile').onchange = async e => { let f = e.target.files[0]; if (!f) return; try { let data = JSON.parse(await f.text()); if (!Array.isArray(data.clients)) throw Error('Arquivo de backup inválido.'); if (!confirm('Substituir a base atual pelos ' + data.clients.length + ' clientes do backup?')) return; clients = data.clients; saveClients(); msg('backupStatus', 'Backup restaurado com sucesso.') } catch (err) { msg('backupStatus', err.message, 'err') } e.target.value = '' };
+        renderClients(); renderHistory(); updateMetrics();
+    </script>
+</body>
+
+</html>
