@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Acqua TEC | Sistema de Gestão</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="layout">
+        <aside class="side">
+            <div class="brand">
+                <img id="logoAcquaTec" src="./logo.png" alt="Acqua TEC Análises">
+            </div>
+            <div>
+                <div class="navlabel">SISTEMA</div>
+                <nav class="nav">
+                    <button class="active" data-page="inicio"><span>⌂</span>Visão geral</button>
+                    <button data-page="clientes"><span>♙</span>Clientes</button>
+                    <button data-page="laudos"><span>▤</span>Gerador de laudos</button>
+                    <button data-page="dados"><span>▦</span>Dados e backup</button>
+                </nav>
+            </div>
+            <div class="sidefoot">Sistema local · Base SQLite neste computador.<br><br>Acqua TEC Análises</div>
+        </aside>
+        <main>
+            <div class="top">
+                <div>Acqua TEC / <strong id="breadcrumb">Visão geral</strong></div>
+                <div id="clock"></div>
+            </div>
+            <section class="view active" id="page-inicio">
+                <div class="heading">
+                    <div>
+                        <div class="eyebrow">Central administrativa</div>
+                        <h1>Visão geral</h1>
+                        <p class="sub">Bem-vindo ao ambiente de gestão da Acqua TEC.</p>
+                    </div><button class="btn primary" onclick="go('laudos')">＋ Gerar laudos</button>
+                </div>
+                <div class="grid">
+                    <div class="card metric"><small>Clientes cadastrados</small><b id="mClientes">0</b><em>Na base
+                            local</em></div>
+                    <div class="card metric"><small>Registros de medições</small><b id="mMedicoes">0</b><em>Importados
+                            nesta sessão</em></div>
+                    <div class="card metric"><small>Laudos gerados</small><b id="mLaudos">0</b><em>Nesta sessão</em>
+                    </div>
+                    <div class="card metric"><small>Próxima etapa</small><b
+                            style="font-size:17px;margin-top:14px">Conferência</b><em>Vincular e emitir documentos</em>
+                    </div>
+                </div>
+                <div class="cols">
+                    <div class="panel">
+                        <div class="cardhead">
+                            <div><b>Fluxo de trabalho</b><small>Da importação à emissão do documento</small></div>
+                        </div>
+                        <div class="step"><span class="stepnum">1</span>
+                            <div><b>Cadastro de clientes</b><br>Importe a planilha CSV ou cadastre os clientes
+                                individualmente.</div>
+                        </div>
+                        <div class="step"><span class="stepnum">2</span>
+                            <div><b>Medições semanais</b><br>Carregue o CSV com os resultados coletados.</div>
+                        </div>
+                        <div class="step"><span class="stepnum">3</span>
+                            <div><b>Conferência dos vínculos</b><br>Revise a associação entre os nomes das medições e os
+                                clientes cadastrados.</div>
+                        </div>
+                        <div class="step"><span class="stepnum">4</span>
+                            <div><b>Geração dos PDFs</b><br>Emita os laudos individuais e baixe o pacote ZIP.</div>
+                        </div>
+                        <div class="notice"><b>Armazenamento local:</b> os cadastros ficam salvos no banco SQLite do
+                            computador. Faça backup regularmente em Dados e backup.</div>
+                    </div>
+                    <div class="panel">
+                        <div class="cardhead">
+                            <div><b>Acesso rápido</b><small>Atalhos operacionais</small></div>
+                        </div>
+                        <div class="quick">
+                            <button onclick="go('clientes')"><i>♙</i><strong>Clientes</strong><small>Ver e
+                                    cadastrar</small></button>
+                            <button onclick="go('laudos')"><i>▤</i><strong>Gerar laudos</strong><small>Importar
+                                    medições</small></button>
+                            <button onclick="go('dados')"><i>⇧</i><strong>Backup</strong><small>Exportar
+                                    cadastros</small></button>
+                            <button onclick="go('dados')"><i>⇩</i><strong>Restaurar</strong><small>Importar
+                                    backup</small></button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section class="view" id="page-clientes">
+                <div class="heading">
+                    <div>
+                        <div class="eyebrow">Base de dados</div>
+                        <h1>Clientes</h1>
+                        <p class="sub">Cadastre e mantenha os dados usados na identificação dos laudos.</p>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="cardhead">
+                        <div><b id="formTitle">Cadastrar cliente</b><small>Os campos seguem o cadastro utilizado pelo
+                                gerador atual.</small></div>
+                    </div>
+                    <form id="clientForm"><input type="hidden" id="editId">
+                        <div class="formgrid">
+                            <div class="field"><label>Nome / Razão social *</label><input id="cCliente" required
+                                    placeholder="Ex.: Condomínio Residencial Alfa"></div>
+                            <div class="field"><label>CNPJ</label><input id="cCNPJ" placeholder="00.000.000/0000-00">
+                            </div>
+                            <div class="field"><label>Endereço</label><input id="cEndereco"
+                                    placeholder="Endereço completo"></div>
+                            <div class="field"><label>Responsável técnico</label><input id="cRT"
+                                    placeholder="Nome do responsável técnico"></div>
+                        </div>
+                        <div class="actions"><button class="btn primary" type="submit">Salvar cliente</button><button
+                                class="btn" type="button" onclick="resetClient()">Limpar</button><label class="btn"
+                                style="margin:0;display:inline-flex;align-items:center">Importar CSV<input type="file"
+                                    id="clientCsv" accept=".csv" hidden></label></div>
+                        <p class="hint">Colunas do CSV: Nome (ou Cliente), CNPJ, Endereco e Responsavel_Tecnico.</p>
+                        <div id="clientStatus" class="statusbox"></div>
+                    </form>
+                </div>
+                <div class="panel">
+                    <div class="cardhead" style="flex-wrap:wrap">
+                        <div><b>Clientes cadastrados</b><small id="clientCount">0 registros</small></div>
+                        <div class="actions" style="margin:0;align-items:center"><button class="btn" type="button"
+                                onclick="downloadClientCSV()">⇩ Exportar cadastro CSV</button><label class="btn"
+                                style="margin:0;display:inline-flex;align-items:center">⇧ Importar CSV<input type="file"
+                                    id="clientCsvList" accept=".csv" hidden></label><input id="filterClients"
+                                style="max-width:200px" placeholder="Buscar cliente..." oninput="renderClients()"></div>
+                    </div>
+                    <div class="tablewrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nome / Razão social</th>
+                                    <th>CNPJ</th>
+                                    <th>Endereço</th>
+                                    <th>Responsável técnico</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="clientsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+            <section class="view" id="page-laudos">
+                <div class="heading">
+                    <div>
+                        <div class="eyebrow">Documentação técnica</div>
+                        <h1>Gerador de laudos</h1>
+                        <p class="sub">Importe os arquivos, confira os vínculos e gere os PDFs individuais.</p>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="step"><span class="stepnum">1</span>
+                        <div><b>Medições semanais</b><br>Importe o CSV da coleta ou carregue medições já salvas no
+                            SQLite.</div>
+                    </div>
+                    <div class="formgrid">
+                        <div class="field"><label>Medições da semana (.CSV)</label><input type="file" id="medicoesFile"
+                                accept=".csv"></div>
+                        <div class="field"><label>Período mensal</label><input type="month" id="measurementPeriod"></div>
+                    </div>
+                    <div class="actions"><button class="btn" id="loadPersisted">Carregar medições
+                            salvas</button><button class="btn primary" id="prepare">Importar CSV e conferir
+                            medições</button><button class="btn" id="saveMeasurements" disabled>Salvar medições no
+                            SQLite</button></div>
+                    <p class="hint">O botão de salvar será habilitado após importar o CSV e vincular todas as medições
+                        a um cliente.</p>
+                    <p class="hint">O arquivo de medições deve conter a coluna Cliente e os campos de parâmetros usados
+                        no seu formulário de coleta.</p>
+                    <div id="importStatus" class="statusbox"></div>
+                </div>
+                <div class="panel" id="mappingPanel" style="display:none">
+                    <div class="cardhead">
+                        <div><b>2. Conferência e vínculo de clientes</b><small>Revise os nomes e selecione o cadastro
+                                correto quando necessário.</small></div><span class="tag" id="rowsCount">0 linhas</span>
+                    </div>
+                    <div class="tablewrap">
+                        <table class="checktable">
+                            <thead>
+                                <tr>
+                                    <th>Linha</th>
+                                    <th>Nome na planilha semanal</th>
+                                    <th>Cadastro vinculado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mappingBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="actions"><button class="btn primary" id="generate">Gerar e baixar pacote de PDFs
+                            (.ZIP)</button></div>
+                    <div id="generateStatus" class="statusbox"></div>
+                </div>
+                <div class="panel">
+                    <div class="cardhead">
+                        <div><b>Histórico local de geração</b><small>Registro de pacotes emitidos salvo neste
+                                navegador.</small></div>
+                    </div>
+                    <div id="history" class="empty">Nenhum pacote gerado nesta sessão.</div>
+                </div>
+            </section>
+            <section class="view" id="page-dados">
+                <div class="heading">
+                    <div>
+                        <div class="eyebrow">Segurança dos dados</div>
+                        <h1>Dados e backup</h1>
+                        <p class="sub">Exporte ou restaure sua base de clientes armazenada no banco SQLite.</p>
+                    </div>
+                </div>
+                <div class="panel"><b>Backup dos cadastros</b>
+                    <p class="sub">Baixe um arquivo JSON com os clientes cadastrados. Guarde-o em local seguro e faça
+                        novas cópias após alterações importantes.</p>
+                    <div class="actions"><button class="btn primary" onclick="exportBackup()">⇩ Exportar
+                            backup</button><label class="btn"
+                            style="margin:0;display:inline-flex;align-items:center">Importar backup<input type="file"
+                                id="restoreFile" accept=".json" hidden></label></div>
+                    <div id="backupStatus" class="statusbox"></div>
+                </div>
+                <div class="panel"><b>Como os dados funcionam</b>
+                    <p class="sub">Esta versão salva os clientes em um banco SQLite local, gerenciado pelo servidor Python. O histórico de laudos utiliza o armazenamento do navegador nesta etapa. Não
+                        há envio automático para a internet, sincronização entre computadores ou acesso multiusuário.
+                        Limpar os dados do navegador remove o histórico de laudos, mas não apaga os cadastros do SQLite; mantenha backups para preservar ambos.</p>
+                    <div class="notice">Os arquivos CSV e os PDFs são processados no próprio navegador. A geração de
+                        PDF/ZIP utiliza bibliotecas carregadas por CDN e, portanto, precisa de conexão com a internet
+                        para carregar essas bibliotecas.</div>
+                </div>
+            </section>
+            <div class="foot">Acqua TEC Análises · Sistema administrativo local · Versão inicial</div>
+        </main>
+    </div>
+    <script src="./script.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,600 @@
+:root {
+    --teal: #0083a3;
+    --deep: #005f77;
+    --pale: #eaf6f8;
+    --bg: #f3f7f7;
+    --ink: #253438;
+    --muted: #718185;
+    --line: #e1e9e9;
+    --white: #fff;
+    --green: #18794e;
+    --red: #b54747;
+    --shadow: 0 5px 22px #183c4310
+}
+
+* {
+    box-sizing: border-box
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 14px/1.5 "Segoe UI", Arial, sans-serif
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit
+}
+
+button {
+    cursor: pointer
+}
+
+button:disabled {
+    cursor: not-allowed;
+    opacity: .55
+}
+
+.layout {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 245px 1fr
+}
+
+.side {
+    background: white;
+    border-right: 1px solid var(--line);
+    padding: 23px 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 25px
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 8px
+}
+
+.brandmark {
+    height: 42px;
+    width: 42px;
+    border: 2px solid #8dd2df;
+    color: var(--teal);
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    font-size: 24px
+}
+
+.brand b {
+    display: block;
+    color: var(--teal);
+    font-size: 17px
+}
+
+.brand small {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: #8b999b;
+    font-weight: bold
+}
+
+.navlabel {
+    font-size: 10px;
+    color: #9aa7a9;
+    letter-spacing: 1.4px;
+    font-weight: bold;
+    padding: 0 10px;
+    margin-bottom: 7px
+}
+
+.nav {
+    display: grid;
+    gap: 4px
+}
+
+.nav button {
+    border: 0;
+    background: none;
+    text-align: left;
+    color: #647477;
+    padding: 11px;
+    border-radius: 9px;
+    font-weight: 600
+}
+
+.nav button:hover,
+.nav button.active {
+    background: var(--pale);
+    color: var(--deep)
+}
+
+.nav button span {
+    display: inline-block;
+    width: 27px;
+    color: var(--teal)
+}
+
+.sidefoot {
+    margin-top: auto;
+    border-top: 1px solid var(--line);
+    padding: 15px 8px 0;
+    color: #91a0a2;
+    font-size: 11px
+}
+
+main {
+    padding: 27px 34px;
+    max-width: 1500px;
+    width: 100%;
+    margin: auto;
+    min-width: 0
+}
+
+.top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    color: #879597;
+    font-size: 12px
+}
+
+.top strong {
+    color: var(--deep)
+}
+
+.top button {
+    border: 1px solid var(--line);
+    background: white;
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: #526164
+}
+
+.view {
+    display: none
+}
+
+.view.active {
+    display: block
+}
+
+.heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 15px;
+    margin-bottom: 20px
+}
+
+.eyebrow {
+    font-size: 10px;
+    color: var(--teal);
+    font-weight: bold;
+    letter-spacing: 1.6px;
+    text-transform: uppercase
+}
+
+h1 {
+    font-size: 27px;
+    letter-spacing: -.6px;
+    margin: 4px 0
+}
+
+.sub {
+    color: var(--muted);
+    margin: 0;
+    font-size: 13px
+}
+
+.btn {
+    border: 1px solid var(--line);
+    background: white;
+    color: #4f6064;
+    padding: 9px 13px;
+    border-radius: 8px;
+    font-weight: 650;
+    font-size: 12px
+}
+
+.btn.primary {
+    background: var(--teal);
+    border-color: var(--teal);
+    color: white
+}
+
+.btn.primary:hover {
+    background: var(--deep)
+}
+
+.btn.danger {
+    color: var(--red)
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 13px;
+    margin-bottom: 17px
+}
+
+.card {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    box-shadow: var(--shadow);
+    padding: 17px
+}
+
+.metric small {
+    color: #829194
+}
+
+.metric b {
+    display: block;
+    font-size: 28px;
+    margin: 6px 0 0
+}
+
+.metric em {
+    font-style: normal;
+    color: #9aa6a8;
+    font-size: 10px
+}
+
+.cols {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 15px
+}
+
+.cardhead {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px
+}
+
+.cardhead b {
+    font-size: 14px
+}
+
+.cardhead small {
+    display: block;
+    color: #95a1a3;
+    font-size: 11px
+}
+
+.quick {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 9px
+}
+
+.quick button {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #fff;
+    padding: 14px;
+    text-align: left;
+    color: var(--ink)
+}
+
+.quick button:hover {
+    border-color: #91d0dc;
+    background: #fbffff
+}
+
+.quick strong {
+    display: block;
+    font-size: 12px
+}
+
+.quick small {
+    font-size: 10px;
+    color: #8d9a9c
+}
+
+.quick i {
+    font-style: normal;
+    color: var(--teal);
+    font-size: 20px;
+    display: block;
+    margin-bottom: 7px
+}
+
+.notice {
+    padding: 13px;
+    background: #eff9fa;
+    border: 1px solid #d7edf0;
+    border-radius: 9px;
+    color: #50676c;
+    font-size: 12px;
+    margin-top: 10px
+}
+
+.notice b {
+    color: var(--deep)
+}
+
+.panel {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    padding: 19px;
+    box-shadow: var(--shadow);
+    margin-bottom: 15px
+}
+
+label {
+    display: block;
+    font-size: 11px;
+    color: #52676b;
+    font-weight: 700;
+    margin: 0 0 6px
+}
+
+input,
+select,
+textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #dce5e6;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--ink);
+    outline: none
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: #68b9c8;
+    box-shadow: 0 0 0 3px #0083a315
+}
+
+.formgrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 13px
+}
+
+.field.full {
+    grid-column: 1/-1
+}
+
+.actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 14px
+}
+
+.hint {
+    color: #879597;
+    font-size: 11px;
+    margin: 7px 0 0
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 12px
+}
+
+th {
+    text-align: left;
+    color: #899799;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    padding: 10px;
+    border-bottom: 1px solid var(--line)
+}
+
+td {
+    padding: 11px 10px;
+    border-bottom: 1px solid #edf1f1;
+    color: #526164
+}
+
+td b {
+    color: #2e4145
+}
+
+tr:last-child td {
+    border-bottom: 0
+}
+
+.tablewrap {
+    overflow: auto
+}
+
+.tag {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 20px;
+    background: #eaf6f8;
+    color: var(--deep);
+    font-size: 10px;
+    font-weight: bold
+}
+
+.tag.ok {
+    background: #eaf6ef;
+    color: var(--green)
+}
+
+.tag.warn {
+    background: #fff4e4;
+    color: #94600d
+}
+
+.empty {
+    text-align: center;
+    padding: 25px;
+    color: #93a0a2;
+    font-size: 12px
+}
+
+.statusbox {
+    display: none;
+    margin-top: 13px;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 12px
+}
+
+.statusbox.ok {
+    display: block;
+    background: #eaf6ef;
+    color: #17613f
+}
+
+.statusbox.err {
+    display: block;
+    background: #fff0f0;
+    color: #9c3535
+}
+
+.step {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin: 12px 0;
+    color: #647477;
+    font-size: 12px
+}
+
+.step b {
+    color: var(--deep)
+}
+
+.stepnum {
+    height: 24px;
+    width: 24px;
+    flex: none;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: var(--pale);
+    color: var(--deep);
+    font-weight: bold
+}
+
+.checktable select {
+    min-width: 210px
+}
+
+.muted {
+    color: #8a999b
+}
+
+.foot {
+    text-align: center;
+    color: #a0acad;
+    font-size: 10px;
+    padding: 20px 0
+}
+
+@media(max-width:950px) {
+    .layout {
+        grid-template-columns: 205px 1fr
+    }
+
+    main {
+        padding: 22px
+    }
+
+    .grid {
+        grid-template-columns: repeat(2, 1fr)
+    }
+
+    .cols {
+        grid-template-columns: 1fr
+    }
+}
+
+@media(max-width:700px) {
+    .layout {
+        display: block
+    }
+
+    .side {
+        padding: 12px;
+        gap: 12px;
+        border: 0;
+        border-bottom: 1px solid var(--line)
+    }
+
+    .nav {
+        display: flex;
+        overflow: auto
+    }
+
+    .nav button {
+        white-space: nowrap;
+        font-size: 11px;
+        padding: 9px
+    }
+
+    .navlabel,
+    .sidefoot {
+        display: none
+    }
+
+    .side>div:nth-child(2) {
+        min-width: 0
+    }
+
+    main {
+        padding: 18px 13px
+    }
+
+    .heading {
+        align-items: flex-start;
+        flex-direction: column
+    }
+
+    h1 {
+        font-size: 23px
+    }
+
+    .formgrid {
+        grid-template-columns: 1fr
+    }
+
+    .field.full {
+        grid-column: auto
+    }
+
+    .panel {
+        padding: 14px
+    }
+
+    .top {
+        margin-bottom: 18px
+    }
+}
+
+/* LOGO ACQUA TEC */
+.brand {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0 5px;
+}
+
+.brand img {
+    width: 100%;
+    max-width: 190px;
+    height: 130px;
+    object-fit: contain;
+}

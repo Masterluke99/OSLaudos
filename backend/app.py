@@ -1,0 +1,228 @@
+from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+from pathlib import Path
+from urllib.parse import urlparse
+import json, sys
+import re
+import uuid
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from database import connect, initialize_database
+
+class AcquaHandler(SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=str(ROOT), **kwargs)
+
+    def end_headers(self):
+        self.send_header("Cache-Control", "no-store")
+        super().end_headers()
+
+    def send_json(self, status, payload):
+        data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def do_GET(self):
+        if urlparse(self.path).path == "/api/clients":
+            with connect() as con:
+                rows = con.execute("SELECT id, cliente, cnpj, endereco, responsavel_tecnico FROM clientes ORDER BY cliente COLLATE NOCASE").fetchall()
+            result = [{"id": r["id"], "Cliente": r["cliente"], "CNPJ": r["cnpj"], "Endereco": r["endereco"], "Responsavel_Tecnico": r["responsavel_tecnico"]} for r in rows]
+            return self.send_json(200, result)
+        if urlparse(self.path).path == "/api/measurement-imports":
+            with connect() as con:
+                rows = con.execute("""
+                    SELECT id, nome_arquivo, periodo_referencia, quantidade, importado_em
+                    FROM importacoes_medicoes
+                    ORDER BY importado_em DESC
+                """).fetchall()
+            return self.send_json(200, [dict(r) for r in rows])
+        if urlparse(self.path).path == "/api/measurements":
+            parsed_url = urlparse(self.path)
+            query = parsed_url.query
+            from urllib.parse import parse_qs
+            filters = parse_qs(query)
+            year = (filters.get("year") or [""])[0].strip()
+            month = (filters.get("month") or [""])[0].strip()
+            client_id = (filters.get("client") or [""])[0].strip()
+            clauses = []
+            params = []
+            if year:
+                clauses.append("ano = ?")
+                params.append(int(year) if year.isdigit() else year)
+            if month:
+                clauses.append("mes = ?")
+                params.append(int(month) if month.isdigit() else month)
+            if client_id:
+                clauses.append("cliente_id = ?")
+                params.append(client_id)
+            where = " WHERE " + " AND ".join(clauses) if clauses else ""
+            with connect() as con:
+                rows = con.execute("""
+                    SELECT id, cliente_id, data_coleta, cloro_livre, ph, alcalinidade,
+                           dureza_total, temperatura, aspecto_visual, avaliacao_tecnica,
+                           local_coleta, dados_json, lote_id, periodo_referencia, ano, mes
+                    FROM medicoes
+                    """ + where + """
+                    ORDER BY data_coleta DESC, criado_em DESC
+                """, params).fetchall()
+            result = []
+            for r in rows:
+                try:
+                    row = json.loads(r["dados_json"])
+                except json.JSONDecodeError:
+                    row = {}
+                row["_measurement_id"] = r["id"]
+                row["_cliente_id"] = r["cliente_id"]
+                row["_lote_id"] = r["lote_id"]
+                row["_periodo"] = r["periodo_referencia"]
+                row["_ano"] = r["ano"]
+                row["_mes"] = r["mes"]
+                result.append(row)
+            return self.send_json(200, result)
+        if urlparse(self.path).path == "/":
+            self.path = "/Acquatec_laudos_sqlite.html"
+        return super().do_GET()
+
+    def do_POST(self):
+        if urlparse(self.path).path != "/api/measurements":
+            return self.send_json(404, {"error": "Rota não encontrada."})
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            if length > 5_000_000:
+                return self.send_json(413, {"error": "Arquivo de medições excede o limite permitido."})
+            data = json.loads(self.rfile.read(length) or "{}")
+            rows = data.get("rows") if isinstance(data, dict) else None
+            nome_arquivo = str(data.get("filename") or "").strip()
+            periodo_informado = str(data.get("period") or "").strip()
+            if not isinstance(rows, list):
+                return self.send_json(400, {"error": "O conteúdo deve conter uma lista de medições."})
+
+            clean = []
+            lote_id = str(data.get("lot_id") or uuid.uuid4())
+            period_values = set()
+            for item in rows:
+                if not isinstance(item, dict):
+                    continue
+                measurement_id = str(item.get("id") or "").strip()
+                cliente_id = str(item.get("cliente_id") or "").strip()
+                row = item.get("row") if isinstance(item.get("row"), dict) else {}
+                if not measurement_id or not cliente_id:
+                    continue
+
+                def val(*keys):
+                    for key in keys:
+                        for found in row:
+                            if str(found).strip().lower() == key.lower():
+                                return str(row[found] or "").strip()
+                    return ""
+
+                data_coleta = val("Carimbo de data/hora", "Data/Hora", "Data", "Data_Coleta")
+                year = ""
+                month = ""
+                match = re.match(r"^(\d{4})-(\d{1,2})", data_coleta)
+                if not match:
+                    match = re.match(r"^(\d{1,2})[/-](\d{1,2})[/-](\d{4})", data_coleta)
+                    if match:
+                        year = match.group(3)
+                        month = match.group(2)
+                else:
+                    year = match.group(1)
+                    month = match.group(2)
+                if not year and periodo_informado:
+                    match = re.match(r"^(\d{4})-(\d{1,2})", periodo_informado)
+                    if match:
+                        year = match.group(1)
+                        month = match.group(2)
+                periodo = f"{year}-{month.zfill(2)}" if year and month else periodo_informado
+                if periodo:
+                    period_values.add(periodo)
+
+                clean.append((
+                    measurement_id,
+                    cliente_id,
+                    data_coleta,
+                    lote_id,
+                    periodo,
+                    int(year) if year.isdigit() else None,
+                    int(month) if month.isdigit() else None,
+                    val("Cloro Livre", "Cloro Livre mg/L", "Cloro_Residual_mg_L"),
+                    val("PH", "pH"),
+                    val("Alcalinidade"),
+                    val("Dureza Total", "Dureza Cálcica"),
+                    val("Temperatura"),
+                    val("Aspecto Visual"),
+                    val("Avaliação Técnica", "Observações", "Observacao"),
+                    val("Local_Coleta", "Local de Coleta", "Ponto_Coleta"),
+                    json.dumps(row, ensure_ascii=False)
+                ))
+
+            if not clean:
+                return self.send_json(400, {"error": "Nenhuma medição possui vínculo válido com um cliente."})
+
+            with connect() as con:
+                con.execute("BEGIN IMMEDIATE")
+                con.executemany("""
+                    INSERT INTO medicoes (
+                        id, cliente_id, data_coleta, lote_id, periodo_referencia, ano, mes,
+                        cloro_livre, ph, alcalinidade, dureza_total, temperatura,
+                        aspecto_visual, avaliacao_tecnica, local_coleta, dados_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(id) DO NOTHING
+                """, clean)
+                periodo_importacao = sorted(period_values)[-1] if period_values else periodo_informado
+                con.execute("""
+                    INSERT INTO importacoes_medicoes (id, nome_arquivo, periodo_referencia, quantidade)
+                    VALUES (?, ?, ?, ?)
+                """, (lote_id, nome_arquivo, periodo_importacao, len(clean)))
+            return self.send_json(200, {"ok": True, "count": len(clean)})
+        except json.JSONDecodeError:
+            return self.send_json(400, {"error": "JSON inválido."})
+        except Exception as exc:
+            print(f"[AcquaTEC] Erro ao salvar medições: {exc}")
+            return self.send_json(500, {"error": "Não foi possível salvar as medições no banco SQLite."})
+
+    def do_PUT(self):
+        if urlparse(self.path).path != "/api/clients":
+            return self.send_json(404, {"error": "Rota não encontrada."})
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            if length > 2_000_000:
+                return self.send_json(413, {"error": "Arquivo de clientes excede o limite permitido."})
+            data = json.loads(self.rfile.read(length) or b"[]")
+            if not isinstance(data, list):
+                return self.send_json(400, {"error": "O conteúdo deve ser uma lista de clientes."})
+            clean = []
+            for item in data:
+                if not isinstance(item, dict) or not str(item.get("Cliente", "")).strip():
+                    continue
+                clean.append((str(item.get("id") or ""), str(item.get("Cliente", "")).strip(), str(item.get("CNPJ", "")).strip(), str(item.get("Endereco", "")).strip(), str(item.get("Responsavel_Tecnico", "")).strip()))
+            if any(not row[0] for row in clean):
+                return self.send_json(400, {"error": "Um ou mais clientes estão sem identificador."})
+            with connect() as con:
+                con.execute("BEGIN IMMEDIATE")
+                con.execute("DELETE FROM clientes")
+                con.executemany("INSERT INTO clientes (id, cliente, cnpj, endereco, responsavel_tecnico, atualizado_em) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)", clean)
+            return self.send_json(200, {"ok": True, "count": len(clean)})
+        except json.JSONDecodeError:
+            return self.send_json(400, {"error": "JSON inválido."})
+        except Exception as exc:
+            print(f"[AcquaTEC] Erro ao salvar clientes: {exc}")
+            return self.send_json(500, {"error": "Não foi possível salvar os clientes no banco SQLite."})
+
+    def log_message(self, fmt, *args):
+        print("[AcquaTEC] " + (fmt % args))
+
+if __name__ == "__main__":
+    initialize_database()
+    server = ThreadingHTTPServer(("127.0.0.1", 8765), AcquaHandler)
+    print("AcquaTEC disponível em http://127.0.0.1:8765")
+    print("Banco SQLite:", ROOT / "dados" / "acquatec.db")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nServidor encerrado.")
+    finally:
+        server.server_close()
