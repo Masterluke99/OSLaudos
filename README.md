@@ -1,171 +1,88 @@
-# 💧 Acqua TEC - Sistema Gerador de Laudos
+# Acqua TEC — Sistema de laudos
 
-Sistema web desenvolvido para automatizar o gerenciamento de análises de qualidade da água, cadastro de clientes e geração de laudos técnicos em PDF.
+Aplicação local para cadastro de clientes, importação de medições de qualidade da água em CSV e geração de laudos em PDF/ZIP.
 
-![Status](https://img.shields.io/badge/status-em%20desenvolvimento-blue)
-![Version](https://img.shields.io/badge/version-1.0-success)
-![JavaScript](https://img.shields.io/badge/JavaScript-Vanilla-yellow)
-![License](https://img.shields.io/badge/license-Private-red)
+## Requisitos
 
----
+- Python 3
+- Navegador moderno
+- Conexão com a internet para carregar jsPDF e JSZip pelas CDNs
 
-## 📋 Sobre o Projeto
+O backend usa apenas a biblioteca padrão do Python e SQLite. Não é necessário instalar pacotes Python.
 
-O Sistema Acqua TEC foi criado para simplificar a rotina operacional de monitoramento da qualidade da água, permitindo:
+## Iniciar no Windows
 
-- Cadastro de clientes
-- Importação de dados por CSV
-- Associação automática de medições aos clientes
-- Geração de laudos técnicos em PDF
-- Exportação de múltiplos laudos em arquivo ZIP
-- Backup e restauração de dados
-- Armazenamento local no navegador
+Na pasta do projeto, execute:
 
-Todo o processamento é realizado no navegador, sem necessidade de servidor ou banco de dados.
-
----
-
-## 🚀 Funcionalidades
-
-### 👥 Gestão de Clientes
-
-- Cadastro manual
-- Edição e exclusão
-- Busca rápida
-- Importação CSV
-- Exportação CSV
-
-### 📊 Importação de Medições
-
-- Leitura de planilhas CSV
-- Reconhecimento automático de clientes
-- Conferência de vínculos
-- Correção manual antes da emissão
-
-### 📄 Geração de Laudos
-
-- Criação automática de PDFs
-- Inclusão dos dados do cliente
-- Diagnóstico automático dos parâmetros
-- Avaliação técnica
-- Data da próxima análise
-
-### 📦 Exportação
-
-- Geração de pacote ZIP contendo todos os PDFs
-- Histórico local de emissões
-
-### 🔐 Backup
-
-- Exportação da base para JSON
-- Restauração completa dos cadastros
-
----
-
-## 🧪 Parâmetros Avaliados
-
-O sistema realiza análise automática dos seguintes parâmetros:
-
-| Parâmetro | Faixa de Referência |
-|------------|-------------------|
-| Cloro Livre | 1.0 – 3.0 |
-| pH | 7.4 – 7.8 |
-| Alcalinidade | 80 – 120 |
-| Dureza Cálcica | 200 – 400 |
-| Temperatura | 26 – 32 °C |
-| Aspecto Visual | Água límpida |
-
----
-
-## 🖥️ Tecnologias Utilizadas
-
-- HTML5
-- CSS3
-- JavaScript Vanilla
-- LocalStorage
-- jsPDF
-- JSZip
-
----
-
-## 📂 Estrutura do Projeto
-
-```text
-OSLaudos/
-│
-├── Acquatec_laudos.html
-├── logo.png
-└── README.md
+```powershell
+py backend\app.py
 ```
 
----
+Ou abra `iniciar_windows.bat`. Acesse [http://127.0.0.1:8765](http://127.0.0.1:8765).
 
-## ⚙️ Como Utilizar
+Para encerrar, pressione `Ctrl+C` no terminal em que o servidor está rodando.
 
-### 1. Clonar o projeto
+## Iniciar no Linux
 
 ```bash
-git clone https://github.com/Masterluke99/OSLaudos.git
+./iniciar_linux.sh
 ```
 
-### 2. Abrir o sistema
+Em seguida, acesse [http://127.0.0.1:8765](http://127.0.0.1:8765).
 
-Basta abrir:
+## Fluxo de uso
+
+1. Cadastre os clientes na seção **Clientes** ou importe o cadastro CSV.
+2. Em **Gerador de laudos**, selecione o CSV das medições e informe o período mensal, se necessário.
+3. Clique em **Importar CSV e conferir medições**.
+4. Confira e corrija os vínculos entre as linhas do CSV e os clientes.
+5. Clique em **Salvar medições no SQLite** para acrescentar as medições ao histórico.
+6. Gere e baixe os laudos em PDF/ZIP.
+
+As medições são armazenadas como registros históricos; uma nova importação não substitui os meses anteriores. Evite importar o mesmo arquivo mais de uma vez, pois cada importação cria um novo lote.
+
+## Formato do CSV de medições
+
+O CSV precisa conter uma coluna `Cliente`. As colunas reconhecidas incluem:
+
+- Data: `Carimbo de data/hora`, `Data/Hora`, `Data` ou `Data_Coleta`
+- `Cloro Livre`
+- `PH` ou `pH`
+- `Alcalinidade`
+- `Dureza Total` ou `Dureza Cálcica`
+- `Temperatura`
+- `Aspecto Visual`
+- Avaliação: `Avaliação Técnica`, `Observações` ou `Observacao`
+- Local: `Local_Coleta`, `Local de Coleta` ou `Ponto_Coleta`
+
+O sistema aceita campos separados por vírgula, ponto e vírgula ou tabulação. As colunas adicionais do CSV também são preservadas com cada medição.
+
+## Dados e backup
+
+O banco SQLite é criado em `dados\acquatec.db` no Windows (ou `dados/acquatec.db` no Linux). Ele contém clientes, medições e registros de importação. O banco e seus arquivos auxiliares estão excluídos do Git. A exportação JSON da seção **Dados e backup** inclui os clientes, mas ainda não as medições; o banco SQLite precisa de uma cópia de segurança separada.
+
+O histórico de geração de PDFs ainda é salvo no armazenamento local do navegador. Não há sincronização entre computadores nem acesso multiusuário.
+
+## API local
+
+- `GET /api/clients` — lista clientes
+- `PUT /api/clients` — substitui a lista de clientes
+- `GET /api/measurements` — lista medições
+- `GET /api/measurements?year=2026&month=11` — filtra medições por ano e mês
+- `GET /api/measurements?client=<id>` — filtra por cliente
+- `POST /api/measurements` — grava um lote de medições
+- `GET /api/measurement-imports` — lista lotes importados
+
+Os filtros de histórico estão disponíveis pela API; a tela de dashboards e seleção de períodos ainda não está implementada.
+
+## Arquivos principais
 
 ```text
-Acquatec_laudos.html
+Acquatec_laudos_sqlite.html  Interface do sistema
+script.js                    Importação, vínculos e geração dos PDFs
+css/style.css                Estilos da interface
+backend/app.py               Servidor HTTP e API local
+backend/database.py          Inicialização e migração do SQLite
+iniciar_windows.bat          Inicialização no Windows
+iniciar_linux.sh             Inicialização no Linux
 ```
-
-em qualquer navegador moderno.
-
----
-
-## 📈 Fluxo de Trabalho
-
-1. Cadastrar clientes
-2. Importar medições da semana
-3. Conferir vínculos automaticamente gerados
-4. Gerar laudos em PDF
-5. Baixar pacote ZIP
-6. Armazenar histórico e backups
-
----
-
-## 💾 Armazenamento
-
-Atualmente o sistema utiliza:
-
-```javascript
-localStorage
-```
-
-para armazenar dados localmente no navegador.
-
-Por isso recomenda-se:
-
-- Fazer backups frequentes
-- Exportar os cadastros periodicamente
-- Não limpar os dados do navegador sem antes criar uma cópia de segurança
-
----
-
-## 🏢 Desenvolvido para
-
-**Acqua TEC Análises**
-
-Sistema interno para apoio à emissão de relatórios e monitoramento da qualidade da água.
-
----
-
-## 👨‍💻 Autor
-
-**Antonio Lukas**
-
-GitHub:
-https://github.com/Masterluke99
-
----
-
-## 📌 Versão
-
-Versão Inicial - Sistema Gerador de Laudos
