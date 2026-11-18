@@ -22,10 +22,19 @@ def initialize_database():
                 cnpj TEXT NOT NULL DEFAULT '',
                 endereco TEXT NOT NULL DEFAULT '',
                 responsavel_tecnico TEXT NOT NULL DEFAULT '',
+                representante_nome TEXT NOT NULL DEFAULT '',
+                representante_cpf TEXT NOT NULL DEFAULT '',
                 criado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 atualizado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        client_columns = {
+            row["name"]: row["name"]
+            for row in con.execute("PRAGMA table_info(clientes)").fetchall()
+        }
+        for column in ("representante_nome", "representante_cpf"):
+            if column not in client_columns:
+                con.execute(f"ALTER TABLE clientes ADD COLUMN {column} TEXT NOT NULL DEFAULT ''")
         con.execute("""
             CREATE TABLE IF NOT EXISTS medicoes (
                 id TEXT PRIMARY KEY,
@@ -53,6 +62,14 @@ def initialize_database():
                 importado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
         """)
+
+        import_columns = {
+            row["name"]: row["name"]
+            for row in con.execute("PRAGMA table_info(importacoes_medicoes)").fetchall()
+        }
+        if "arquivo_hash" not in import_columns:
+            con.execute("ALTER TABLE importacoes_medicoes ADD COLUMN arquivo_hash TEXT NOT NULL DEFAULT ''")
+        con.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_importacoes_hash ON importacoes_medicoes(arquivo_hash) WHERE arquivo_hash != ''")
 
         measurement_columns = {
             row["name"]: row["name"]

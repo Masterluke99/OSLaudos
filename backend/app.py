@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 import json, sys
 import re
 import uuid
+import hashlib
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -28,17 +29,36 @@ class AcquaHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if urlparse(self.path).path == "/api/clients":
             with connect() as con:
-                rows = con.execute("SELECT id, cliente, cnpj, endereco, responsavel_tecnico FROM clientes ORDER BY cliente COLLATE NOCASE").fetchall()
-            result = [{"id": r["id"], "Cliente": r["cliente"], "CNPJ": r["cnpj"], "Endereco": r["endereco"], "Responsavel_Tecnico": r["responsavel_tecnico"]} for r in rows]
+                rows = con.execute("""
+                    SELECT id, cliente, cnpj, endereco, responsavel_tecnico,
+                           representante_nome, representante_cpf
+                    FROM clientes ORDER BY cliente COLLATE NOCASE
+                """).fetchall()
+            result = [{
+                "id": r["id"],
+                "Cliente": r["cliente"],
+                "CNPJ": r["cnpj"],
+                "Endereco": r["endereco"],
+                "Responsavel_Tecnico": r["responsavel_tecnico"],
+                "Representante_Nome": r["representante_nome"],
+                "Representante_CPF": r["representante_cpf"],
+            } for r in rows]
             return self.send_json(200, result)
         if urlparse(self.path).path == "/api/measurement-imports":
             with connect() as con:
                 rows = con.execute("""
-                    SELECT id, nome_arquivo, periodo_referencia, quantidade, importado_em
+                    SELECT id, nome_arquivo, periodo_referencia, quantidade, importado_em, arquivo_hash
                     FROM importacoes_medicoes
                     ORDER BY importado_em DESC
                 """).fetchall()
-            return self.send_json(200, [dict(r) for r in rows])
+            return self.send_json(200, [{
+                "id": r["id"],
+                "nome_arquivo": r["nome_arquivo"],
+                "periodo_referencia": r["periodo_referencia"],
+                "quantidade": r["quantidade"],
+                "importado_em": r["importado_em"],
+                "arquivo_hash": r["arquivo_hash"],
+            } for r in rows])
         if urlparse(self.path).path == "/api/measurements":
             parsed_url = urlparse(self.path)
             query = parsed_url.query
@@ -87,6 +107,123 @@ class AcquaHandler(SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def do_POST(self):
+        if urlparse(self.path).path == "/api/restore":
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                if length > 20_000_000:
+                    return self.send_json(413, {"error": "Arquivo de backup excede o limite permitido."})
+                data = json.loads(self.rfile.read(length) or "{}")
+                if data.get("app") != "Acqua TEC":
+                    return self.send_json(400, {"error": "Arquivo de backup inválido."})
+                clients = data.get("clients")
+                measurements = data.get("measurements")
+                imports = data.get("measurement_imports")
+                if not isinstance(clients, list) or not isinstance(measurements, list) or not isinstance(imports, list):
+                    return self.send_json(400, {"error": "O backup está incompleto ou possui formato inválido."})
+
+                client_rows = []
+                for item in clients:
+                    if not isinstance(item, dict) or not str(item.get("Cliente", "")).strip():
+                        continue
+                    client_id = str(item.get("id") or "").strip()
+                    if not client_id:
+                        return self.send_json(400, {"error": "Um ou mais clientes do backup estão sem identificador."})
+                    client_rows.append((
+                        client_id,
+                        str(item.get("Cliente", "")).strip(),
+                        str(item.get("CNPJ", "")).strip(),
+                        str(item.get("Endereco", "")).strip(),
+                        str(item.get("Responsavel_Tecnico", "")).strip(),
+                        str(item.get("Representante_Nome", "")).strip(),
+                        str(item.get("Representante_CPF", "")).strip(),
+                    ))
+
+                measurement_rows = []
+                for item in measurements:
+                    if not isinstance(item, dict):
+                        continue
+                    measurement_id = str(item.get("_measurement_id") or "").strip()
+                    client_id = str(item.get("_cliente_id") or "").strip()
+                    if not measurement_id or not client_id:
+                        continue
+
+                    def val(*keys):
+                        for key in keys:
+                            for found in item:
+                                if str(found).strip().lower() == key.lower():
+                                    return str(item[found] or "").strip()
+                        return ""
+
+                    year = item.get("_ano")
+                    month = item.get("_mes")
+                    measurement_rows.append((
+                        measurement_id,
+                        client_id,
+                        val("Carimbo de data/hora", "Data/Hora", "Data", "Data_Coleta"),
+                        str(item.get("_lote_id") or ""),
+                        str(item.get("_periodo") or ""),
+                        int(year) if isinstance(year, int) else None,
+                        int(month) if isinstance(month, int) else None,
+                        val("Cloro Livre", "Cloro Livre mg/L", "Cloro_Residual_mg_L"),
+                        val("PH", "pH"),
+                        val("Alcalinidade"),
+                        val("Dureza Total", "Dureza Cálcica"),
+                        val("Temperatura"),
+                        val("Aspecto Visual"),
+                        val("Avaliação Técnica", "Observações", "Observacao"),
+                        val("Local_Coleta", "Local de Coleta", "Ponto_Coleta"),
+                        json.dumps(item, ensure_ascii=False),
+                    ))
+
+                with connect() as con:
+                    con.execute("BEGIN IMMEDIATE")
+                    con.execute("DELETE FROM clientes")
+                    con.execute("DELETE FROM importacoes_medicoes")
+                    con.execute("DELETE FROM medicoes")
+                    con.executemany("""
+                        INSERT INTO clientes (
+                            id, cliente, cnpj, endereco, responsavel_tecnico,
+                            representante_nome, representante_cpf
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """, client_rows)
+                    con.executemany("""
+                        INSERT INTO medicoes (
+                            id, cliente_id, data_coleta, lote_id, periodo_referencia, ano, mes,
+                            cloro_livre, ph, alcalinidade, dureza_total, temperatura,
+                            aspecto_visual, avaliacao_tecnica, local_coleta, dados_json
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, measurement_rows)
+                    import_rows = []
+                    for item in imports:
+                        if not isinstance(item, dict):
+                            continue
+                        import_rows.append((
+                            str(item.get("id") or uuid.uuid4()),
+                            str(item.get("nome_arquivo") or ""),
+                            str(item.get("periodo_referencia") or ""),
+                            int(item.get("quantidade") or 0),
+                            str(item.get("arquivo_hash") or ""),
+                        ))
+                    con.executemany("""
+                        INSERT INTO importacoes_medicoes (id, nome_arquivo, periodo_referencia, quantidade, arquivo_hash)
+                        VALUES (?, ?, ?, ?, ?)
+                        ON CONFLICT(id) DO UPDATE SET
+                            nome_arquivo = excluded.nome_arquivo,
+                            periodo_referencia = excluded.periodo_referencia,
+                            quantidade = excluded.quantidade,
+                            arquivo_hash = excluded.arquivo_hash
+                    """, import_rows)
+                return self.send_json(200, {
+                    "ok": True,
+                    "clientCount": len(client_rows),
+                    "measurementCount": len(measurement_rows),
+                })
+            except json.JSONDecodeError:
+                return self.send_json(400, {"error": "JSON de backup inválido."})
+            except Exception as exc:
+                print(f"[AcquaTEC] Erro ao restaurar backup: {exc}")
+                return self.send_json(500, {"error": "Não foi possível restaurar o backup completo."})
+
         if urlparse(self.path).path != "/api/measurements":
             return self.send_json(404, {"error": "Rota não encontrada."})
         try:
@@ -99,6 +236,27 @@ class AcquaHandler(SimpleHTTPRequestHandler):
             periodo_informado = str(data.get("period") or "").strip()
             if not isinstance(rows, list):
                 return self.send_json(400, {"error": "O conteúdo deve conter uma lista de medições."})
+
+            file_hash = str(data.get("file_hash") or "").strip()
+            if not file_hash:
+                canonical = json.dumps(
+                    {"filename": nome_arquivo, "period": periodo_informado, "rows": rows},
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                file_hash = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+            with connect() as con:
+                existing = con.execute(
+                    "SELECT id, nome_arquivo, quantidade, importado_em FROM importacoes_medicoes WHERE arquivo_hash = ?",
+                    (file_hash,),
+                ).fetchone()
+            if existing:
+                return self.send_json(409, {
+                    "error": "Este arquivo já foi importado anteriormente.",
+                    "existing": dict(existing),
+                })
 
             clean = []
             lote_id = str(data.get("lot_id") or uuid.uuid4())
@@ -174,9 +332,9 @@ class AcquaHandler(SimpleHTTPRequestHandler):
                 """, clean)
                 periodo_importacao = sorted(period_values)[-1] if period_values else periodo_informado
                 con.execute("""
-                    INSERT INTO importacoes_medicoes (id, nome_arquivo, periodo_referencia, quantidade)
-                    VALUES (?, ?, ?, ?)
-                """, (lote_id, nome_arquivo, periodo_importacao, len(clean)))
+                    INSERT INTO importacoes_medicoes (id, nome_arquivo, periodo_referencia, quantidade, arquivo_hash)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (lote_id, nome_arquivo, periodo_importacao, len(clean), file_hash))
             return self.send_json(200, {"ok": True, "count": len(clean)})
         except json.JSONDecodeError:
             return self.send_json(400, {"error": "JSON inválido."})
@@ -198,13 +356,39 @@ class AcquaHandler(SimpleHTTPRequestHandler):
             for item in data:
                 if not isinstance(item, dict) or not str(item.get("Cliente", "")).strip():
                     continue
-                clean.append((str(item.get("id") or ""), str(item.get("Cliente", "")).strip(), str(item.get("CNPJ", "")).strip(), str(item.get("Endereco", "")).strip(), str(item.get("Responsavel_Tecnico", "")).strip()))
+                clean.append((
+                    str(item.get("id") or ""),
+                    str(item.get("Cliente", "")).strip(),
+                    str(item.get("CNPJ", "")).strip(),
+                    str(item.get("Endereco", "")).strip(),
+                    str(item.get("Responsavel_Tecnico", "")).strip(),
+                    str(item.get("Representante_Nome", "")).strip(),
+                    str(item.get("Representante_CPF", "")).strip(),
+                ))
             if any(not row[0] for row in clean):
                 return self.send_json(400, {"error": "Um ou mais clientes estão sem identificador."})
             with connect() as con:
                 con.execute("BEGIN IMMEDIATE")
-                con.execute("DELETE FROM clientes")
-                con.executemany("INSERT INTO clientes (id, cliente, cnpj, endereco, responsavel_tecnico, atualizado_em) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)", clean)
+                con.executemany("""
+                    INSERT INTO clientes (
+                        id, cliente, cnpj, endereco, responsavel_tecnico,
+                        representante_nome, representante_cpf, atualizado_em
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    ON CONFLICT(id) DO UPDATE SET
+                        cliente = excluded.cliente,
+                        cnpj = excluded.cnpj,
+                        endereco = excluded.endereco,
+                        responsavel_tecnico = excluded.responsavel_tecnico,
+                        representante_nome = excluded.representante_nome,
+                        representante_cpf = excluded.representante_cpf,
+                        atualizado_em = CURRENT_TIMESTAMP
+                """, clean)
+                client_ids = [row[0] for row in clean]
+                if client_ids:
+                    placeholders = ",".join("?" for _ in client_ids)
+                    con.execute(f"DELETE FROM clientes WHERE id NOT IN ({placeholders})", client_ids)
+                else:
+                    con.execute("DELETE FROM clientes")
             return self.send_json(200, {"ok": True, "count": len(clean)})
         except json.JSONDecodeError:
             return self.send_json(400, {"error": "JSON inválido."})

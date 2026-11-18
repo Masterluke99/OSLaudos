@@ -32,12 +32,14 @@ Em seguida, acesse [http://127.0.0.1:8765](http://127.0.0.1:8765).
 
 ## Fluxo de uso
 
-1. Cadastre os clientes na seção **Clientes** ou importe o cadastro CSV.
+1. Cadastre os clientes na seção **Clientes** ou importe o cadastro CSV. Para gerar contratos, preencha também o representante legal e seu CPF.
 2. Em **Gerador de laudos**, selecione o CSV das medições e informe o período mensal, se necessário.
 3. Clique em **Importar CSV e conferir medições**.
 4. Confira e corrija os vínculos entre as linhas do CSV e os clientes.
 5. Clique em **Salvar medições no SQLite** para acrescentar as medições ao histórico.
 6. Gere e baixe os laudos em PDF/ZIP.
+
+Na seção **Contratos**, selecione um cliente e informe o registro profissional, as datas de vigência, os valores, o dia e a forma de pagamento. O contrato é individual, segue as 12 cláusulas do modelo fornecido e usa o foro da Comarca de Marília/SP.
 
 As medições são armazenadas como registros históricos; uma nova importação não substitui os meses anteriores. Evite importar o mesmo arquivo mais de uma vez, pois cada importação cria um novo lote.
 
@@ -59,7 +61,11 @@ O sistema aceita campos separados por vírgula, ponto e vírgula ou tabulação.
 
 ## Dados e backup
 
-O banco SQLite é criado em `dados\acquatec.db` no Windows (ou `dados/acquatec.db` no Linux). Ele contém clientes, medições e registros de importação. O banco e seus arquivos auxiliares estão excluídos do Git. A exportação JSON da seção **Dados e backup** inclui os clientes, mas ainda não as medições; o banco SQLite precisa de uma cópia de segurança separada.
+O banco SQLite é criado em `dados\acquatec.db` no Windows (ou `dados/acquatec.db` no Linux). Ele contém clientes, medições e registros de importação. O banco e seus arquivos auxiliares estão excluídos do Git. A exportação JSON da seção **Dados e backup** inclui clientes, medições e registros de importação. A restauração substitui esses dados pelo conteúdo do arquivo selecionado.
+
+O cadastro de clientes também guarda o representante legal e o CPF usados como signatário nos contratos. Esses campos são incluídos nos backups e na exportação CSV de clientes.
+
+Cada arquivo CSV recebe uma assinatura SHA-256 no momento da importação. Uma nova tentativa com o mesmo conteúdo é recusada pelo servidor, evitando lotes e medições duplicados.
 
 O histórico de geração de PDFs ainda é salvo no armazenamento local do navegador. Não há sincronização entre computadores nem acesso multiusuário.
 
@@ -72,6 +78,7 @@ O histórico de geração de PDFs ainda é salvo no armazenamento local do naveg
 - `GET /api/measurements?client=<id>` — filtra por cliente
 - `POST /api/measurements` — grava um lote de medições
 - `GET /api/measurement-imports` — lista lotes importados
+- `POST /api/restore` — substitui os dados cadastrados pelos dados de um backup completo
 
 Os filtros de histórico estão disponíveis pela API; a tela de dashboards e seleção de períodos ainda não está implementada.
 
@@ -80,6 +87,7 @@ Os filtros de histórico estão disponíveis pela API; a tela de dashboards e se
 ```text
 Acquatec_laudos_sqlite.html  Interface do sistema
 script.js                    Importação, vínculos e geração dos PDFs
+contracts.js                 Geração individual de contratos PDF
 css/style.css                Estilos da interface
 backend/app.py               Servidor HTTP e API local
 backend/database.py          Inicialização e migração do SQLite

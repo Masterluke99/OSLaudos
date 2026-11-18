@@ -25,7 +25,7 @@ async function initializeApp() {
         renderClients();
     } catch (error) {
         msg('clientStatus', 'Não foi possível conectar ao banco local. Inicie o servidor pelo iniciar_linux.sh ou iniciar_windows.bat. ' + error.message, 'err');
-        document.getElementById('clientsBody').innerHTML = '<tr><td colspan="5" class="empty">Banco de dados indisponível. Inicie o servidor local.</td></tr>';
+        document.getElementById('clientsBody').innerHTML = '<tr><td colspan="6" class="empty">Banco de dados indisponível. Inicie o servidor local.</td></tr>';
     }
 }
 
@@ -37,7 +37,7 @@ function updateMetrics() {
 function go(p) {
     document.querySelectorAll('.view').forEach(x => x.classList.remove('active'));
     document.getElementById('page-' + p).classList.add('active'); document.querySelectorAll('.nav button').forEach(x => x.classList.toggle('active', x.dataset.page === p));
-    document.getElementById('breadcrumb').textContent = ({ inicio: 'Visão geral', clientes: 'Clientes', laudos: 'Gerador de laudos', dados: 'Dados e backup' })[p]
+    document.getElementById('breadcrumb').textContent = ({ inicio: 'Visão geral', clientes: 'Clientes', laudos: 'Gerador de laudos', contratos: 'Contratos', dados: 'Dados e backup' })[p]
 }
 document.querySelectorAll('.nav button').forEach(b => b.onclick = () => go(b.dataset.page));
 document.getElementById('clock').textContent = new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' });
@@ -56,7 +56,7 @@ function parseCSV(text) {
     return rows.map(r => Object.fromEntries(headers.map((h, i) => [h, (r[i] || '').trim()])));
 }
 function val(o, ...keys) { for (let k of keys) { let found = Object.keys(o || {}).find(x => norm(x) === norm(k)); if (found !== undefined) return o[found] } return '' }
-function fromRow(r) { return { id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()), Cliente: val(r, 'Nome', 'Razao Social', 'Razão Social', 'Cliente'), CNPJ: val(r, 'CNPJ'), Endereco: val(r, 'Endereco', 'Endereço'), Responsavel_Tecnico: val(r, 'Responsavel_Tecnico', 'Responsável Técnico') } }
+function fromRow(r) { return { id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()), Cliente: val(r, 'Nome', 'Razao Social', 'Razão Social', 'Cliente'), CNPJ: val(r, 'CNPJ'), Endereco: val(r, 'Endereco', 'Endereço'), Responsavel_Tecnico: val(r, 'Responsavel_Tecnico', 'Responsável Técnico'), Representante_Nome: val(r, 'Representante_Nome', 'Representante', 'Representante Legal'), Representante_CPF: val(r, 'Representante_CPF', 'CPF Representante', 'CPF') } }
 document.getElementById('clientForm').onsubmit = async e => {
     e.preventDefault();
     const id = document.getElementById('editId').value;
@@ -65,7 +65,9 @@ document.getElementById('clientForm').onsubmit = async e => {
         Cliente: cCliente.value.trim(),
         CNPJ: cCNPJ.value.trim(),
         Endereco: cEndereco.value.trim(),
-        Responsavel_Tecnico: cRT.value.trim()
+        Responsavel_Tecnico: cRT.value.trim(),
+        Representante_Nome: cRepresentante.value.trim(),
+        Representante_CPF: cRepresentanteCPF.value.trim()
     };
     const previous = [...clients];
     const i = clients.findIndex(x => x.id === id);
@@ -84,11 +86,11 @@ document.getElementById('clientForm').onsubmit = async e => {
     }
 };
 function resetClient() { document.getElementById('clientForm').reset(); document.getElementById('editId').value = ''; document.getElementById('formTitle').textContent = 'Cadastrar cliente' }
-function renderClients() { let q = norm(document.getElementById('filterClients').value), list = clients.filter(c => norm(c.Cliente).includes(q) || norm(c.Endereco).includes(q)); document.getElementById('clientCount').textContent = clients.length + ' registros'; let b = document.getElementById('clientsBody'); b.innerHTML = ''; if (!list.length) { b.innerHTML = '<tr><td colspan="5" class="empty">Nenhum cliente encontrado.</td></tr>'; return } list.forEach(c => { let tr = document.createElement('tr'); tr.innerHTML = `<td><b>${esc(c.Cliente)}</b></td><td>${esc(c.CNPJ || '—')}</td><td>${esc(c.Endereco || '—')}</td><td>${esc(c.Responsavel_Tecnico || '—')}</td><td><button class="btn" onclick="editClient('${c.id}')">Editar</button> <button class="btn danger" onclick="deleteClient('${c.id}')">Excluir</button></td>`; b.appendChild(tr) }) }
+function renderClients() { let q = norm(document.getElementById('filterClients').value), list = clients.filter(c => norm(c.Cliente).includes(q) || norm(c.Endereco).includes(q)); document.getElementById('clientCount').textContent = clients.length + ' registros'; let b = document.getElementById('clientsBody'); b.innerHTML = ''; if (!list.length) { b.innerHTML = '<tr><td colspan="6" class="empty">Nenhum cliente encontrado.</td></tr>'; if (typeof renderContractClients === 'function') renderContractClients(); return } list.forEach(c => { let tr = document.createElement('tr'); tr.innerHTML = `<td><b>${esc(c.Cliente)}</b></td><td>${esc(c.CNPJ || '—')}</td><td>${esc(c.Endereco || '—')}</td><td>${esc(c.Responsavel_Tecnico || '—')}</td><td>${esc(c.Representante_Nome || '—')}<br><span class="muted">${esc(c.Representante_CPF || 'CPF não informado')}</span></td><td><button class="btn" onclick="editClient('${c.id}')">Editar</button> <button class="btn danger" onclick="deleteClient('${c.id}')">Excluir</button></td>`; b.appendChild(tr) }); if (typeof renderContractClients === 'function') renderContractClients() }
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])) }
-function editClient(id) { let c = clients.find(x => x.id === id); if (!c) return; editId.value = c.id; cCliente.value = c.Cliente; cCNPJ.value = c.CNPJ || ''; cEndereco.value = c.Endereco; cRT.value = c.Responsavel_Tecnico; formTitle.textContent = 'Editar cliente'; window.scrollTo({ top: 0, behavior: 'smooth' }) }
+function editClient(id) { let c = clients.find(x => x.id === id); if (!c) return; editId.value = c.id; cCliente.value = c.Cliente; cCNPJ.value = c.CNPJ || ''; cEndereco.value = c.Endereco; cRT.value = c.Responsavel_Tecnico; cRepresentante.value = c.Representante_Nome || ''; cRepresentanteCPF.value = c.Representante_CPF || ''; formTitle.textContent = 'Editar cliente'; window.scrollTo({ top: 0, behavior: 'smooth' }) }
 async function deleteClient(id) { if (confirm('Excluir este cliente do cadastro local?')) { const previous = [...clients]; clients = clients.filter(x => x.id !== id); try { await saveClients(); msg('clientStatus', 'Cliente excluído.') } catch (err) { clients = previous; msg('clientStatus', err.message, 'err') } } }
-document.getElementById('clientCsv').onchange = async e => { let f = e.target.files[0]; if (!f) return; try { let rows = parseCSV(await f.text()); let imported = rows.map(fromRow).filter(x => x.Cliente); for (let c of imported) { let old = clients.find(x => norm(x.Cliente) === norm(c.Cliente)); if (old) Object.assign(old, c, { id: old.id }); else clients.push(c) } await saveClients(); msg('clientStatus', imported.length + ' clientes importados/atualizados.') } catch (err) { msg('clientStatus', 'Erro ao ler CSV: ' + err.message, 'err') } e.target.value = '' };
+document.getElementById('clientCsv').onchange = async e => { let f = e.target.files[0]; if (!f) return; try { let rows = parseCSV(await f.text()); let imported = rows.map(fromRow).filter(x => x.Cliente); for (let c of imported) { let old = clients.find(x => norm(x.Cliente) === norm(c.Cliente)); if (old) Object.assign(old, c, { id: old.id, Representante_Nome: c.Representante_Nome || old.Representante_Nome || '', Representante_CPF: c.Representante_CPF || old.Representante_CPF || '' }); else clients.push(c) } await saveClients(); msg('clientStatus', imported.length + ' clientes importados/atualizados.') } catch (err) { msg('clientStatus', 'Erro ao ler CSV: ' + err.message, 'err') } e.target.value = '' };
 async function loadPersistedMeasurements(showMessage = true) {
     try {
         const response = await fetch('/api/measurements');
@@ -144,6 +146,7 @@ async function saveMeasurements() {
         row
     }));
     const csvFile = document.getElementById('medicoesFile').files[0];
+    const fileHash = csvFile ? await hashText(await csvFile.text()) : '';
     const response = await fetch('/api/measurements', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -151,7 +154,8 @@ async function saveMeasurements() {
             rows,
             period,
             filename: csvFile ? csvFile.name : '',
-            lot_id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now())
+            lot_id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+            file_hash: fileHash
         })
     });
     const detail = await response.json().catch(() => null);
@@ -228,15 +232,29 @@ function renderHistory() {
 }
 
 function csvCell(value) { let s = String(value ?? ''); return '"' + s.replace(/"/g, '""') + '"' }
+async function hashText(text) {
+    if (window.crypto && window.crypto.subtle) {
+        const digest = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+        return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    let hash = 2166136261;
+    for (let i = 0; i < text.length; i++) {
+        hash ^= text.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+    }
+    return ('0000000' + (hash >>> 0).toString(16)).slice(-8);
+}
 function downloadClientCSV() {
-    const headers = ['Nome', 'CNPJ', 'Endereco', 'Responsavel_Tecnico'];
+    const headers = ['Nome', 'CNPJ', 'Endereco', 'Responsavel_Tecnico', 'Representante_Nome', 'Representante_CPF'];
     const lines = [
         headers.join(';'),
         ...clients.map(c => [
             csvCell(c.Cliente || ''),
             csvCell(c.CNPJ || ''),
             csvCell(c.Endereco || ''),
-            csvCell(c.Responsavel_Tecnico || '')
+            csvCell(c.Responsavel_Tecnico || ''),
+            csvCell(c.Representante_Nome || ''),
+            csvCell(c.Representante_CPF || '')
         ].join(';'))
     ];
     const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
@@ -288,11 +306,70 @@ async function obterLogoBase64() {
     const f = e.target.files[0]; if (!f) return;
     try {
         const rows = parseCSV(await f.text()), imported = rows.map(fromRow).filter(c => c.Cliente);
-        for (const c of imported) { const old = clients.find(x => norm(x.Cliente) === norm(c.Cliente)); if (old) Object.assign(old, c, { id: old.id }); else clients.push(c) }
+        for (const c of imported) { const old = clients.find(x => norm(x.Cliente) === norm(c.Cliente)); if (old) Object.assign(old, c, { id: old.id, Representante_Nome: c.Representante_Nome || old.Representante_Nome || '', Representante_CPF: c.Representante_CPF || old.Representante_CPF || '' }); else clients.push(c) }
         await saveClients(); msg('clientStatus', imported.length + ' clientes importados/atualizados a partir do CSV.');
     } catch (err) { msg('clientStatus', 'Erro ao importar CSV: ' + err.message, 'err') }
     e.target.value = '';
 };
-function exportBackup() { let blob = new Blob([JSON.stringify({ app: 'Acqua TEC', version: 1, exportedAt: new Date().toISOString(), clients }, null, 2)], { type: 'application/json' }), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'backup_acquatec_clientes.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); msg('backupStatus', 'Backup exportado. Guarde o arquivo em local seguro.') }
-document.getElementById('restoreFile').onchange = async e => { let f = e.target.files[0]; if (!f) return; try { let data = JSON.parse(await f.text()); if (!Array.isArray(data.clients)) throw Error('Arquivo de backup inválido.'); if (!confirm('Substituir a base atual pelos ' + data.clients.length + ' clientes do backup?')) return; clients = data.clients; await saveClients(); msg('backupStatus', 'Backup restaurado com sucesso.') } catch (err) { msg('backupStatus', err.message, 'err') } e.target.value = '' };
+async function exportBackup() {
+    try {
+        msg('backupStatus', 'Preparando backup completo...');
+        const [clientsResponse, measurementsResponse, importsResponse] = await Promise.all([
+            fetch('/api/clients'),
+            fetch('/api/measurements'),
+            fetch('/api/measurement-imports')
+        ]);
+        if (!clientsResponse.ok || !measurementsResponse.ok || !importsResponse.ok) {
+            throw new Error('Não foi possível carregar todos os dados para o backup.');
+        }
+        const [currentClients, currentMeasurements, currentImports] = await Promise.all([
+            clientsResponse.json(),
+            measurementsResponse.json(),
+            importsResponse.json()
+        ]);
+        const backup = {
+            app: 'Acqua TEC',
+            version: 2,
+            exportedAt: new Date().toISOString(),
+            clients: currentClients,
+            measurements: currentMeasurements,
+            measurement_imports: currentImports
+        };
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'backup_acquatec_completo.json';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+        msg('backupStatus', `Backup completo exportado: ${currentClients.length} clientes e ${currentMeasurements.length} medições.`);
+    } catch (err) {
+        msg('backupStatus', err.message, 'err');
+    }
+}
+document.getElementById('restoreFile').onchange = async e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    try {
+        const data = JSON.parse(await f.text());
+        if (data.app !== 'Acqua TEC' || !Array.isArray(data.clients) ||
+            !Array.isArray(data.measurements) || !Array.isArray(data.measurement_imports)) {
+            throw Error('Arquivo de backup inválido ou incompleto.');
+        }
+        if (!confirm(`Restaurar o backup completo? Isso substituirá ${data.clients.length} clientes e ${data.measurements.length} medições atuais.`)) return;
+        const response = await fetch('/api/restore', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const detail = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(detail.error || 'Não foi possível restaurar o backup.');
+        await initializeApp();
+        msg('backupStatus', `Backup restaurado: ${detail.clientCount} clientes e ${detail.measurementCount} medições.`);
+    } catch (err) {
+        msg('backupStatus', err.message, 'err');
+    } finally {
+        e.target.value = '';
+    }
+};
 initializeApp();

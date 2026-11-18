@@ -22,6 +22,7 @@
                     <button class="active" data-page="inicio"><span>⌂</span>Visão geral</button>
                     <button data-page="clientes"><span>♙</span>Clientes</button>
                     <button data-page="laudos"><span>▤</span>Gerador de laudos</button>
+                    <button data-page="contratos"><span>▧</span>Contratos</button>
                     <button data-page="dados"><span>▦</span>Dados e backup</button>
                 </nav>
             </div>
@@ -100,8 +101,8 @@
                 </div>
                 <div class="panel">
                     <div class="cardhead">
-                        <div><b id="formTitle">Cadastrar cliente</b><small>Os campos seguem o cadastro utilizado pelo
-                                gerador atual.</small></div>
+                        <div><b id="formTitle">Cadastrar cliente</b><small>Os dados do representante serão usados
+                                como signatário do cliente nos contratos.</small></div>
                     </div>
                     <form id="clientForm"><input type="hidden" id="editId">
                         <div class="formgrid">
@@ -113,12 +114,17 @@
                                     placeholder="Endereço completo"></div>
                             <div class="field"><label>Responsável técnico</label><input id="cRT"
                                     placeholder="Nome do responsável técnico"></div>
+                            <div class="field"><label>Representante legal *</label><input id="cRepresentante" required
+                                    placeholder="Nome completo de quem assinará pelo cliente"></div>
+                            <div class="field"><label>CPF do representante *</label><input id="cRepresentanteCPF"
+                                    required inputmode="numeric" placeholder="000.000.000-00"></div>
                         </div>
                         <div class="actions"><button class="btn primary" type="submit">Salvar cliente</button><button
                                 class="btn" type="button" onclick="resetClient()">Limpar</button><label class="btn"
                                 style="margin:0;display:inline-flex;align-items:center">Importar CSV<input type="file"
                                     id="clientCsv" accept=".csv" hidden></label></div>
-                        <p class="hint">Colunas do CSV: Nome (ou Cliente), CNPJ, Endereco e Responsavel_Tecnico.</p>
+                        <p class="hint">Colunas do CSV: Nome (ou Cliente), CNPJ, Endereco, Responsavel_Tecnico,
+                            Representante_Nome e Representante_CPF.</p>
                         <div id="clientStatus" class="statusbox"></div>
                     </form>
                 </div>
@@ -139,6 +145,7 @@
                                     <th>CNPJ</th>
                                     <th>Endereço</th>
                                     <th>Responsável técnico</th>
+                                    <th>Representante / CPF</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>
@@ -204,16 +211,77 @@
                     <div id="history" class="empty">Nenhum pacote gerado nesta sessão.</div>
                 </div>
             </section>
+            <section class="view" id="page-contratos">
+                <div class="heading">
+                    <div>
+                        <div class="eyebrow">Documentação contratual</div>
+                        <h1>Contratos</h1>
+                        <p class="sub">Gere um contrato individual de responsabilidade técnica a partir do modelo Acqua TEC.</p>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="step"><span class="stepnum">1</span>
+                        <div><b>Selecione o cliente e confira os signatários</b><br>O representante e CPF são mantidos
+                            no cadastro de clientes. O responsável técnico é Antonio Lucas Triburtino.</div>
+                    </div>
+                    <form id="contractForm">
+                        <div class="formgrid">
+                            <div class="field full"><label for="contractClient">Cliente *</label>
+                                <select id="contractClient" required>
+                                    <option value="">Selecione um cliente cadastrado</option>
+                                </select>
+                            </div>
+                            <div class="field"><label>Representante do cliente</label><input id="contractRepresentative" readonly></div>
+                            <div class="field"><label>CPF do representante</label><input id="contractRepresentativeCPF" readonly></div>
+                            <div class="field"><label>Responsável técnico</label><input value="ANTONIO LUCAS TRIBURTINO" readonly></div>
+                            <div class="field"><label for="contractRegistration">Registro profissional *</label>
+                                <input id="contractRegistration" required placeholder="Informe o número do registro">
+                            </div>
+                            <div class="field"><label for="contractDuration">Vigência (meses) *</label>
+                                <input id="contractDuration" type="number" min="1" step="1" value="12" required>
+                            </div>
+                            <div class="field"><label for="contractStart">Início da vigência *</label>
+                                <input id="contractStart" type="date" required>
+                            </div>
+                            <div class="field"><label for="contractEnd">Fim da vigência *</label>
+                                <input id="contractEnd" type="date" required>
+                            </div>
+                            <div class="field"><label for="contractTotal">Valor global (R$) *</label>
+                                <input id="contractTotal" type="number" min="0.01" step="0.01" value="1800.00" required>
+                            </div>
+                            <div class="field"><label for="contractInstallments">Parcelas mensais *</label>
+                                <input id="contractInstallments" type="number" min="1" step="1" value="12" required>
+                            </div>
+                            <div class="field"><label for="contractDueDay">Dia de vencimento mensal *</label>
+                                <input id="contractDueDay" type="number" min="1" max="31" required placeholder="Ex.: 10">
+                            </div>
+                            <div class="field"><label for="contractPayment">Forma de pagamento *</label>
+                                <input id="contractPayment" required placeholder="Ex.: PIX, transferência bancária">
+                            </div>
+                            <div class="field"><label>Foro</label><input value="Comarca de Marília, Estado de São Paulo" readonly></div>
+                            <div class="field"><label for="contractSigningDate">Data de assinatura *</label>
+                                <input id="contractSigningDate" type="date" required>
+                            </div>
+                        </div>
+                        <div class="notice">O contrato será gerado em PDF para um único cliente. Confira os dados e as
+                            condições antes de emitir e colher as assinaturas.</div>
+                        <div class="actions">
+                            <button class="btn primary" type="submit">Gerar contrato PDF</button>
+                        </div>
+                        <div id="contractStatus" class="statusbox"></div>
+                    </form>
+                </div>
+            </section>
             <section class="view" id="page-dados">
                 <div class="heading">
                     <div>
                         <div class="eyebrow">Segurança dos dados</div>
                         <h1>Dados e backup</h1>
-                        <p class="sub">Exporte ou restaure sua base de clientes armazenada no banco SQLite.</p>
+                        <p class="sub">Exporte ou restaure os dados de clientes, representantes e medições armazenados no banco SQLite.</p>
                     </div>
                 </div>
                 <div class="panel"><b>Backup dos cadastros</b>
-                    <p class="sub">Baixe um arquivo JSON com os clientes cadastrados. Guarde-o em local seguro e faça
+                    <p class="sub">Baixe um arquivo JSON com clientes, medições e registros de importação. Guarde-o em local seguro e faça
                         novas cópias após alterações importantes.</p>
                     <div class="actions"><button class="btn primary" onclick="exportBackup()">⇩ Exportar
                             backup</button><label class="btn"
@@ -234,6 +302,7 @@
         </main>
     </div>
     <script src="./script.js"></script>
+    <script src="./contracts.js"></script>
 
 </body>
 
