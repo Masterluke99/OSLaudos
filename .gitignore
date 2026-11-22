@@ -3,3 +3,4 @@ dados/*.db-shm
 dados/*.db-wal
 dados/certificados/
 __pycache__/
+dist/

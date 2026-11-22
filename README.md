@@ -22,6 +22,15 @@ Ou abra `iniciar_windows.bat`. Acesse [http://127.0.0.1:8765](http://127.0.0.1:8
 
 Para encerrar, pressione `Ctrl+C` no terminal em que o servidor está rodando.
 
+## Executável portátil
+
+Na pasta `dist\AcquaTEC`, execute `AcquaTEC.exe`. O navegador será aberto automaticamente em
+`http://127.0.0.1:8765`.
+
+O banco SQLite e os arquivos de certificado dessa versão ficam dentro da própria pasta `dist\AcquaTEC\dados`.
+Mantenha a pasta completa ao copiar ou instalar o sistema em outro computador. Para encerrar o
+servidor local, feche a janela do terminal exibida pelo executável.
+
 ## Assinatura digital em lote
 
 O gerador pode assinar cada PDF antes de montá-lo no ZIP. Marque **Assinar PDFs com certificado digital** na etapa de geração.
@@ -65,6 +74,23 @@ Na tela **Certificado digital**, use **Validar PDF** para conferir um PDF assina
 ```
 
 Em seguida, acesse [http://127.0.0.1:8765](http://127.0.0.1:8765).
+
+## Executável portátil no Linux
+
+No Linux Mint ou em outra distribuição Linux baseada em Ubuntu/Debian, abra o Terminal na pasta do projeto e execute:
+
+```bash
+chmod +x criar_executavel_linux.sh
+./criar_executavel_linux.sh
+```
+
+Em seguida, execute:
+
+```bash
+./dist/AcquaTEC/AcquaTEC
+```
+
+O executável Linux deve ser criado e testado no próprio Linux. Um arquivo compilado no Windows não funciona no Linux, e vice-versa.
 
 ## Fluxo de uso
 

@@ -9,14 +9,23 @@ import base64
 from io import BytesIO
 from datetime import datetime
 import subprocess
+import webbrowser
+import threading
 
-ROOT = Path(__file__).resolve().parent.parent
+if getattr(sys, "frozen", False):
+    DATA_ROOT = Path(sys.executable).resolve().parent
+    ASSET_ROOT = Path(getattr(sys, "_MEIPASS", DATA_ROOT))
+else:
+    DATA_ROOT = Path(__file__).resolve().parent.parent
+    ASSET_ROOT = DATA_ROOT
+
+ROOT = DATA_ROOT
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from database import connect, initialize_database
 
 class AcquaHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, directory=str(ROOT), **kwargs)
+        super().__init__(*args, directory=str(ASSET_ROOT), **kwargs)
 
     def end_headers(self):
         self.send_header("Cache-Control", "no-store")
@@ -243,7 +252,7 @@ class AcquaHandler(SimpleHTTPRequestHandler):
                         seal_height = 72
                         seal_path = cert_dir / f"selo-assinatura-{index + 1}.pdf"
                         seal_canvas = canvas.Canvas(str(seal_path), pagesize=(seal_width, seal_height))
-                        logo_path = ROOT / "logo.png"
+                        logo_path = ASSET_ROOT / "logo.png"
                         if logo_path.is_file():
                             seal_canvas.drawImage(
                                 ImageReader(str(logo_path)),
@@ -607,6 +616,7 @@ if __name__ == "__main__":
     server = ThreadingHTTPServer(("127.0.0.1", 8765), AcquaHandler)
     print("AcquaTEC disponível em http://127.0.0.1:8765")
     print("Banco SQLite:", ROOT / "dados" / "acquatec.db")
+    threading.Timer(0.8, lambda: webbrowser.open("http://127.0.0.1:8765")).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
