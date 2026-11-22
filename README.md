@@ -96,6 +96,28 @@ abrir o sistema pelo duplo clique.
 
 O executável Linux deve ser criado e testado no próprio Linux. Um arquivo compilado no Windows não funciona no Linux, e vice-versa.
 
+## Instaladores para distribuição
+
+Os instaladores são gerados no computador de desenvolvimento; quem recebe o instalador não precisa clonar o repositório nem instalar Python.
+
+### Linux (Ubuntu, Debian ou Mint)
+
+Instale `dpkg-dev` na máquina de desenvolvimento e execute `./criar_instalador_linux.sh`. O arquivo `.deb` será criado em `dist/instaladores/`. O usuário final pode abrir o arquivo para instalar ou executar:
+
+```bash
+sudo apt install ./dist/instaladores/acquatec_1.0.0_amd64.deb
+```
+
+O programa aparece no menu de aplicativos como **AcquaTEC**. O pacote deve ser compilado no Linux e na arquitetura de destino.
+
+### Windows
+
+Na máquina Windows de desenvolvimento, instale Python 3 e Inno Setup 6, adicione `ISCC.exe` ao `PATH` e execute `criar_instalador_windows.bat`. O arquivo `dist\instaladores\AcquaTEC-Setup.exe` é o instalador para os demais computadores Windows.
+
+Os instaladores incluem o programa e as dependências Python. Os dados ficam no perfil do usuário e não são incluídos nos instaladores: o banco de cada computador é criado na primeira execução. Por segurança, certificados digitais e senhas também não são empacotados; configure-os separadamente em **Certificado digital** em cada computador.
+
+Cada instalador é nativo da plataforma: gere o `.deb` no Linux e o `.exe` no Windows. A geração do PDF e do ZIP ainda carrega jsPDF e JSZip de CDNs e, portanto, precisa de conexão com a internet.
+
 ## Fluxo de uso
 
 1. Cadastre os clientes na seção **Clientes** ou importe o cadastro CSV. Para gerar contratos, preencha também o representante legal e seu CPF.

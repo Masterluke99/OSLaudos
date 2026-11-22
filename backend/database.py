@@ -1,12 +1,9 @@
 
 from pathlib import Path
 import sqlite3
-import sys
+from runtime_paths import get_data_root
 
-if getattr(sys, "frozen", False):
-    ROOT = Path(sys.executable).resolve().parent
-else:
-    ROOT = Path(__file__).resolve().parent.parent
+ROOT = get_data_root()
 DB_PATH = ROOT / "dados" / "acquatec.db"
 
 def connect():

@@ -12,15 +12,17 @@ import subprocess
 import webbrowser
 import threading
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from runtime_paths import get_data_root
+
 if getattr(sys, "frozen", False):
-    DATA_ROOT = Path(sys.executable).resolve().parent
+    DATA_ROOT = get_data_root()
     ASSET_ROOT = Path(getattr(sys, "_MEIPASS", DATA_ROOT))
 else:
-    DATA_ROOT = Path(__file__).resolve().parent.parent
+    DATA_ROOT = get_data_root()
     ASSET_ROOT = DATA_ROOT
 
 ROOT = DATA_ROOT
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 from database import connect, initialize_database
 
 class AcquaHandler(SimpleHTTPRequestHandler):
