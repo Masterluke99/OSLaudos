@@ -132,6 +132,50 @@ class AcquaHandler(SimpleHTTPRequestHandler):
                 print(f"[AcquaTEC] Erro ao abrir pasta do certificado: {exc}", flush=True)
                 return self.send_json(500, {"error": "Não foi possível abrir a pasta do certificado."})
 
+        if urlparse(self.path).path == "/api/verify-pdf":
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                if length > 50_000_000:
+                    return self.send_json(413, {"error": "O PDF excede o limite permitido."})
+                data = json.loads(self.rfile.read(length) or "{}")
+                pdf_base64 = str(data.get("pdf") or "")
+                if not pdf_base64:
+                    return self.send_json(400, {"error": "Nenhum PDF foi enviado para validação."})
+                pdf_bytes = base64.b64decode(pdf_base64, validate=True)
+
+                from pyhanko.pdf_utils.reader import PdfFileReader
+                from pyhanko.sign.validation import validate_pdf_signature
+
+                reader = PdfFileReader(BytesIO(pdf_bytes))
+                signatures = reader.embedded_signatures
+                if not signatures:
+                    return self.send_json(200, {
+                        "signed": False,
+                        "sha256": hashlib.sha256(pdf_bytes).hexdigest(),
+                    })
+
+                results = []
+                for signature in signatures:
+                    status = validate_pdf_signature(signature)
+                    results.append({
+                        "intact": bool(status.intact),
+                        "valid": bool(status.valid),
+                        "trusted": bool(status.trusted),
+                        "summary": status.summary(),
+                    })
+                valid = all(item["intact"] and item["valid"] for item in results)
+                trusted = all(item["trusted"] for item in results)
+                return self.send_json(200, {
+                    "signed": True,
+                    "valid": valid,
+                    "trusted": trusted,
+                    "sha256": hashlib.sha256(pdf_bytes).hexdigest(),
+                    "signatures": results,
+                })
+            except Exception as exc:
+                print(f"[AcquaTEC] Erro ao validar PDF: {type(exc).__name__}: {exc}", flush=True)
+                return self.send_json(500, {"error": "Não foi possível validar o PDF."})
+
         if urlparse(self.path).path == "/api/sign-pdfs":
             try:
                 length = int(self.headers.get("Content-Length", "0"))
@@ -171,6 +215,9 @@ class AcquaHandler(SimpleHTTPRequestHandler):
                     from pyhanko.pdf_utils import content
                     from reportlab.pdfgen import canvas
                     from reportlab.lib.utils import ImageReader
+                    from reportlab.graphics.barcode import qr
+                    from reportlab.graphics.shapes import Drawing
+                    from reportlab.graphics import renderPDF
                 except ImportError:
                     return self.send_json(500, {"error": "Dependências de assinatura não instaladas. Execute: py -3 -m pip install -r requirements-sign.txt"})
 
@@ -187,6 +234,8 @@ class AcquaHandler(SimpleHTTPRequestHandler):
                     if not pdf_base64:
                         continue
                     source = base64.b64decode(pdf_base64, validate=True)
+                    source_sha256 = hashlib.sha256(source).hexdigest()
+                    identifier = f"ACQ-{source_sha256[:12].upper()}"
                     output = BytesIO()
                     with BytesIO(source) as input_file:
                         writer = IncrementalPdfFileWriter(input_file)
@@ -215,7 +264,15 @@ class AcquaHandler(SimpleHTTPRequestHandler):
                         seal_canvas.drawString(70, 42, "ANTONIO LUCAS TRIBURTINO")
                         seal_canvas.setFont("Helvetica", 8)
                         seal_canvas.drawString(70, 30, "CNPJ 17.601.076/0001-75")
-                        seal_canvas.drawString(70, 18, signed_at)
+                        seal_canvas.drawString(70, 18, f"{signed_at}  |  {identifier}")
+                        qr_payload = f"ACQUATEC|{identifier}|SHA256:{source_sha256}|{filename}"
+                        qr_code = qr.QrCodeWidget(qr_payload)
+                        qr_bounds = qr_code.getBounds()
+                        qr_width = qr_bounds[2] - qr_bounds[0]
+                        qr_height = qr_bounds[3] - qr_bounds[1]
+                        qr_drawing = Drawing(54, 54, transform=[54 / qr_width, 0, 0, 54 / qr_height, 0, 0])
+                        qr_drawing.add(qr_code)
+                        renderPDF.draw(qr_drawing, seal_canvas, 290, 9)
                         seal_canvas.save()
                         seal_style = StaticStampStyle(
                             background=content.ImportedPdfPage(str(seal_path), page_ix=0),
@@ -243,6 +300,8 @@ class AcquaHandler(SimpleHTTPRequestHandler):
                         "filename": filename,
                         "pdf": base64.b64encode(output.getvalue()).decode("ascii"),
                         "sha256": hashlib.sha256(output.getvalue()).hexdigest(),
+                        "source_sha256": source_sha256,
+                        "identifier": identifier,
                     })
                 if len(signed_documents) != len(documents):
                     return self.send_json(400, {"error": "Um ou mais PDFs possuem conteúdo inválido."})

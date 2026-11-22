@@ -73,6 +73,40 @@ async function updateCertificateStatus() {
         document.getElementById('certificateStatus').textContent = error.message;
     }
 }
+
+async function verifySignedPdf() {
+    try {
+        const input = document.getElementById('verifyPdfFile');
+        if (!input.files.length) throw Error('Selecione um PDF para validar.');
+        const bytes = new Uint8Array(await input.files[0].arrayBuffer());
+        let binary = '';
+        const chunkSize = 0x8000;
+        for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+            binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+        }
+        msg('certificateVerifyStatus', 'Validando assinatura digital...');
+        const response = await fetch('/api/verify-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pdf: btoa(binary) })
+        });
+        const detail = await response.json().catch(() => ({}));
+        if (!response.ok) throw Error(detail.error || 'Não foi possível validar o PDF.');
+        if (!detail.signed) {
+            msg('certificateVerifyStatus', `PDF sem assinatura digital. SHA-256: ${detail.sha256}`, 'err');
+            return;
+        }
+        if (detail.valid && detail.trusted) {
+            msg('certificateVerifyStatus', `Assinatura válida, íntegra e confiável. SHA-256: ${detail.sha256}`);
+        } else if (detail.valid) {
+            msg('certificateVerifyStatus', `Assinatura íntegra, mas a confiança da cadeia não pôde ser confirmada. SHA-256: ${detail.sha256}`, 'err');
+        } else {
+            msg('certificateVerifyStatus', `Assinatura inválida ou documento alterado. SHA-256: ${detail.sha256}`, 'err');
+        }
+    } catch (error) {
+        msg('certificateVerifyStatus', error.message, 'err');
+    }
+}
 document.getElementById('clock').textContent = new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' });
 function msg(id, text, type = 'ok') { let e = document.getElementById(id); e.className = 'statusbox ' + type; e.textContent = text }
 function norm(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim() }
@@ -272,12 +306,19 @@ document.getElementById('generate').onclick = async () => {
             });
             const detail = await response.json().catch(() => ({}));
             if (!response.ok) throw Error(detail.error || 'Não foi possível assinar os PDFs.');
+            const validationLines = ['VALIDAÇÃO DAS ASSINATURAS DIGITAIS', ''];
             for (const item of detail.documents) {
                 const binary = atob(item.pdf);
                 const bytes = new Uint8Array(binary.length);
                 for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
                 zip.file(item.filename, bytes);
+                validationLines.push(item.filename);
+                validationLines.push(`Identificador: ${item.identifier}`);
+                validationLines.push(`SHA-256 do documento original: ${item.source_sha256}`);
+                validationLines.push(`SHA-256 do PDF assinado: ${item.sha256}`);
+                validationLines.push('');
             }
+            zip.file('Validacao_Assinaturas.txt', validationLines.join('\n'));
         } else {
             for (const item of pdfDocuments) zip.file(item.filename, item.pdf);
         }

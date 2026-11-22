@@ -329,6 +329,14 @@
                         <button class="btn primary" type="button" onclick="openCertificateFolder()">Abrir pasta do certificado</button>
                     </div>
                     <div id="certificateFolderStatus" class="statusbox"></div>
+                    <div class="cardhead" style="margin-top:20px">
+                        <div><b>Validar PDF assinado</b><small>Verifica integridade, certificado e assinatura</small></div>
+                    </div>
+                    <div class="actions">
+                        <input id="verifyPdfFile" type="file" accept="application/pdf">
+                        <button class="btn primary" type="button" onclick="verifySignedPdf()">Validar PDF</button>
+                    </div>
+                    <div id="certificateVerifyStatus" class="statusbox"></div>
                 </div>
             </section>
             <div class="foot">Acqua TEC Análises · Sistema administrativo local · Versão inicial</div>

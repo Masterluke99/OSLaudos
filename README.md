@@ -50,7 +50,13 @@ Configure o certificado em uma máquina privada:
 
 A pasta `dados/certificados/` é ignorada pelo Git. Nunca envie o PFX ou a configuração de senha para o repositório.
 
-O selo impresso usa a logo do sistema e é centralizado na parte inferior da última página. Ele contém “Assinado digitalmente”, o signatário, o CNPJ e a data/hora. Além do selo visual, o PDF recebe uma assinatura criptográfica ICP-Brasil reconhecida por leitores compatíveis.
+O selo impresso usa a logo do sistema e é centralizado na parte inferior da última página. Ele contém “Assinado digitalmente”, o signatário, o CNPJ, a data/hora e um identificador curto no formato `ACQ-XXXXXXXXXXXX`.
+
+Além do selo visual, o PDF recebe uma assinatura criptográfica ICP-Brasil reconhecida por leitores compatíveis. O selo inclui também um QR Code com o identificador, o nome do arquivo e o SHA-256 do documento antes da assinatura.
+
+O pacote ZIP gerado contém `Validacao_Assinaturas.txt`, com o identificador, o SHA-256 do documento original e o SHA-256 do PDF assinado.
+
+Na tela **Certificado digital**, use **Validar PDF** para conferir um PDF assinado. O sistema informa se o documento possui assinatura, se o conteúdo está íntegro, se a assinatura é válida e se a cadeia do certificado é confiável.
 
 ## Iniciar no Linux
 
@@ -110,6 +116,7 @@ O histórico de geração de PDFs ainda é salvo no armazenamento local do naveg
 - `GET /api/measurement-imports` — lista lotes importados
 - `POST /api/restore` — substitui os dados cadastrados pelos dados de um backup completo
 - `POST /api/sign-pdfs` — assina em lote os PDFs enviados no corpo da requisição
+- `POST /api/verify-pdf` — verifica integridade, validade e confiança das assinaturas embutidas em um PDF
 - `GET /api/certificate-status` — informa se o PFX e a configuração estão presentes
 - `POST /api/open-certificate-folder` — abre a pasta privada do certificado no Explorador de Arquivos
 
