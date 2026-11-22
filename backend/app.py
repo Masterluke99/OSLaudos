@@ -8,6 +8,7 @@ import hashlib
 import base64
 from io import BytesIO
 from datetime import datetime
+import subprocess
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -30,6 +31,12 @@ class AcquaHandler(SimpleHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self):
+        if urlparse(self.path).path == "/api/certificate-status":
+            cert_dir = ROOT / "dados" / "certificados"
+            return self.send_json(200, {
+                "pfx": (cert_dir / "certificado.pfx").is_file(),
+                "config": (cert_dir / "config.json").is_file(),
+            })
         if urlparse(self.path).path == "/api/clients":
             with connect() as con:
                 rows = con.execute("""
@@ -110,6 +117,21 @@ class AcquaHandler(SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def do_POST(self):
+        if urlparse(self.path).path == "/api/open-certificate-folder":
+            cert_dir = ROOT / "dados" / "certificados"
+            cert_dir.mkdir(parents=True, exist_ok=True)
+            try:
+                if sys.platform.startswith("win"):
+                    subprocess.Popen(["explorer.exe", str(cert_dir)])
+                elif sys.platform.startswith("darwin"):
+                    subprocess.Popen(["open", str(cert_dir)])
+                else:
+                    subprocess.Popen(["xdg-open", str(cert_dir)])
+                return self.send_json(200, {"ok": True, "path": str(cert_dir)})
+            except Exception as exc:
+                print(f"[AcquaTEC] Erro ao abrir pasta do certificado: {exc}", flush=True)
+                return self.send_json(500, {"error": "Não foi possível abrir a pasta do certificado."})
+
         if urlparse(self.path).path == "/api/sign-pdfs":
             try:
                 length = int(self.headers.get("Content-Length", "0"))

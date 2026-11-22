@@ -24,6 +24,7 @@
                     <button data-page="laudos"><span>▤</span>Gerador de laudos</button>
                     <button data-page="contratos"><span>▧</span>Contratos</button>
                     <button data-page="dados"><span>▦</span>Dados e backup</button>
+                    <button data-page="certificado"><span>▣</span>Certificado digital</button>
                 </nav>
             </div>
             <div class="sidefoot">Sistema local · Base SQLite neste computador.<br><br>Acqua TEC Análises</div>
@@ -302,6 +303,32 @@
                     <div class="notice">Os arquivos CSV e os PDFs são processados no próprio navegador. A geração de
                         PDF/ZIP utiliza bibliotecas carregadas por CDN e, portanto, precisa de conexão com a internet
                         para carregar essas bibliotecas.</div>
+                </div>
+            </section>
+            <section class="view" id="page-certificado">
+                <div class="heading">
+                    <div>
+                        <div class="eyebrow">Assinatura ICP-Brasil</div>
+                        <h1>Certificado digital</h1>
+                        <p class="sub">Acesse a pasta privada para adicionar ou substituir o certificado manualmente.</p>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="cardhead">
+                        <div><b>Configuração manual do certificado</b><small id="certificateStatus">Verificando configuração...</small></div>
+                    </div>
+                    <p class="sub">A pasta não é enviada ao GitHub e deve conter o arquivo PFX e o arquivo de configuração.</p>
+                    <div class="notice">
+                        <b>Arquivo esperado:</b> <code>dados/certificados/certificado.pfx</code><br>
+                        <b>Configuração esperada:</b> <code>dados/certificados/config.json</code>
+                    </div>
+                    <pre id="certificateConfigExample" style="white-space:pre-wrap;background:#f5f7f8;border-radius:8px;padding:12px">{
+  "password": "SENHA_DO_CERTIFICADO"
+}</pre>
+                    <div class="actions">
+                        <button class="btn primary" type="button" onclick="openCertificateFolder()">Abrir pasta do certificado</button>
+                    </div>
+                    <div id="certificateFolderStatus" class="statusbox"></div>
                 </div>
             </section>
             <div class="foot">Acqua TEC Análises · Sistema administrativo local · Versão inicial</div>

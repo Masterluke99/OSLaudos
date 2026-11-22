@@ -26,6 +26,8 @@ Para encerrar, pressione `Ctrl+C` no terminal em que o servidor está rodando.
 
 O gerador pode assinar cada PDF antes de montá-lo no ZIP. Marque **Assinar PDFs com certificado digital** na etapa de geração.
 
+No menu lateral, a opção **Certificado digital** abre a pasta privada usada pelo sistema. Pela pasta, adicione ou substitua `certificado.pfx` e `config.json` manualmente.
+
 Instale as dependências de assinatura:
 
 ```powershell
@@ -106,6 +108,8 @@ O histórico de geração de PDFs ainda é salvo no armazenamento local do naveg
 - `GET /api/measurement-imports` — lista lotes importados
 - `POST /api/restore` — substitui os dados cadastrados pelos dados de um backup completo
 - `POST /api/sign-pdfs` — assina em lote os PDFs enviados no corpo da requisição
+- `GET /api/certificate-status` — informa se o PFX e a configuração estão presentes
+- `POST /api/open-certificate-folder` — abre a pasta privada do certificado no Explorador de Arquivos
 
 Os filtros de histórico estão disponíveis pela API; a tela de dashboards e seleção de períodos ainda não está implementada.
 

@@ -23,6 +23,7 @@ async function initializeApp() {
         await loadPersistedMeasurements(false);
         updateMetrics();
         renderClients();
+        updateCertificateStatus();
     } catch (error) {
         msg('clientStatus', 'Não foi possível conectar ao banco local. Inicie o servidor pelo iniciar_linux.sh ou iniciar_windows.bat. ' + error.message, 'err');
         document.getElementById('clientsBody').innerHTML = '<tr><td colspan="6" class="empty">Banco de dados indisponível. Inicie o servidor local.</td></tr>';
@@ -37,9 +38,41 @@ function updateMetrics() {
 function go(p) {
     document.querySelectorAll('.view').forEach(x => x.classList.remove('active'));
     document.getElementById('page-' + p).classList.add('active'); document.querySelectorAll('.nav button').forEach(x => x.classList.toggle('active', x.dataset.page === p));
-    document.getElementById('breadcrumb').textContent = ({ inicio: 'Visão geral', clientes: 'Clientes', laudos: 'Gerador de laudos', contratos: 'Contratos', dados: 'Dados e backup' })[p]
+    document.getElementById('breadcrumb').textContent = ({ inicio: 'Visão geral', clientes: 'Clientes', laudos: 'Gerador de laudos', contratos: 'Contratos', dados: 'Dados e backup', certificado: 'Certificado digital' })[p]
 }
-document.querySelectorAll('.nav button').forEach(b => b.onclick = () => go(b.dataset.page));
+document.querySelectorAll('.nav button').forEach(b => b.onclick = () => {
+    go(b.dataset.page);
+    if (b.dataset.page === 'certificado') openCertificateFolder();
+});
+
+async function openCertificateFolder() {
+    try {
+        const response = await fetch('/api/open-certificate-folder', { method: 'POST' });
+        const detail = await response.json().catch(() => ({}));
+        if (!response.ok) throw Error(detail.error || 'Não foi possível abrir a pasta do certificado.');
+        msg('certificateFolderStatus', 'Pasta do certificado aberta no Explorador de Arquivos.');
+    } catch (error) {
+        msg('certificateFolderStatus', error.message, 'err');
+    }
+}
+
+async function updateCertificateStatus() {
+    try {
+        const response = await fetch('/api/certificate-status');
+        const detail = await response.json();
+        if (!response.ok) throw Error(detail.error || 'Não foi possível verificar o certificado.');
+        const status = document.getElementById('certificateStatus');
+        if (detail.pfx && detail.config) {
+            status.textContent = 'Certificado e configuração encontrados.';
+        } else if (detail.pfx) {
+            status.textContent = 'Certificado encontrado; falta criar config.json.';
+        } else {
+            status.textContent = 'Certificado ainda não configurado.';
+        }
+    } catch (error) {
+        document.getElementById('certificateStatus').textContent = error.message;
+    }
+}
 document.getElementById('clock').textContent = new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' });
 function msg(id, text, type = 'ok') { let e = document.getElementById(id); e.className = 'statusbox ' + type; e.textContent = text }
 function norm(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim() }
