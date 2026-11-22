@@ -4,3 +4,5 @@ dados/*.db-wal
 dados/certificados/
 __pycache__/
 dist/
+.venv-build/
+build/

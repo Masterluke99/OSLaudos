@@ -90,6 +90,10 @@ Em seguida, execute:
 ./dist/AcquaTEC/AcquaTEC
 ```
 
+O script também copia o programa completo para `~/Desktop/AcquaTEC` e
+cria o atalho `AcquaTEC.desktop` na Área de Trabalho. Use esse atalho para
+abrir o sistema pelo duplo clique.
+
 O executável Linux deve ser criado e testado no próprio Linux. Um arquivo compilado no Windows não funciona no Linux, e vice-versa.
 
 ## Fluxo de uso
