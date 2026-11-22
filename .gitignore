@@ -1,4 +1,5 @@
 dados/*.db
 dados/*.db-shm
 dados/*.db-wal
+dados/certificados/
 __pycache__/

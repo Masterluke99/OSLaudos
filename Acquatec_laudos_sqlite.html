@@ -199,8 +199,14 @@
                             <tbody id="mappingBody"></tbody>
                         </table>
                     </div>
-                    <div class="actions"><button class="btn primary" id="generate">Gerar e baixar pacote de PDFs
-                            (.ZIP)</button></div>
+                    <div class="actions">
+                        <label class="btn" style="margin:0;display:inline-flex;align-items:center">
+                            <input type="checkbox" id="signGeneratedPdfs" style="width:auto;margin-right:8px" checked>
+                            Assinar PDFs com certificado digital
+                        </label>
+                        <button class="btn primary" id="generate">Gerar e baixar pacote de PDFs
+                            (.ZIP)</button>
+                    </div>
                     <div id="generateStatus" class="statusbox"></div>
                 </div>
                 <div class="panel">

@@ -5,6 +5,9 @@ import json, sys
 import re
 import uuid
 import hashlib
+import base64
+from io import BytesIO
+from datetime import datetime
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -107,6 +110,125 @@ class AcquaHandler(SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def do_POST(self):
+        if urlparse(self.path).path == "/api/sign-pdfs":
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                if length > 50_000_000:
+                    return self.send_json(413, {"error": "O lote de PDFs excede o limite permitido."})
+                raw_body = self.rfile.read(length)
+                body_text = (raw_body or b"{}").decode("utf-8")
+                body_text = body_text.lstrip("\ufeff")
+                try:
+                    data = json.loads(body_text)
+                except json.JSONDecodeError as exc:
+                    print(f"[AcquaTEC] JSON inválido em assinatura: {exc}; bytes={len(raw_body)}; prefix={raw_body[:80]!r}", flush=True)
+                    return self.send_json(400, {"error": "JSON inválido."})
+                documents = data.get("documents") if isinstance(data, dict) else None
+                if not isinstance(documents, list) or not documents:
+                    return self.send_json(400, {"error": "Nenhum PDF foi enviado para assinatura."})
+
+                cert_dir = ROOT / "dados" / "certificados"
+                pfx_path = cert_dir / "certificado.pfx"
+                config_path = cert_dir / "config.json"
+                if not pfx_path.is_file():
+                    return self.send_json(404, {"error": "Certificado PFX não encontrado."})
+                if not config_path.is_file():
+                    return self.send_json(404, {"error": "Configuração do certificado não encontrada."})
+                with config_path.open("r", encoding="utf-8-sig") as config_file:
+                    config = json.load(config_file)
+                password = str(config.get("password") or "").encode("utf-8")
+                if not password:
+                    return self.send_json(400, {"error": "A senha do certificado não foi configurada."})
+
+                try:
+                    from pyhanko.sign import signers
+                    from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
+                    from pyhanko.sign.signers.pdf_signer import PdfSigner, PdfSignatureMetadata
+                    from pyhanko.sign.fields import SigFieldSpec
+                    from pyhanko.stamp import StaticStampStyle
+                    from pyhanko.pdf_utils import content
+                    from reportlab.pdfgen import canvas
+                    from reportlab.lib.utils import ImageReader
+                except ImportError:
+                    return self.send_json(500, {"error": "Dependências de assinatura não instaladas. Execute: py -3 -m pip install -r requirements-sign.txt"})
+
+                signer = signers.SimpleSigner.load_pkcs12(
+                    pfx_file=str(pfx_path),
+                    passphrase=password,
+                )
+                signed_documents = []
+                for index, document in enumerate(documents):
+                    if not isinstance(document, dict):
+                        continue
+                    filename = str(document.get("filename") or f"Laudo_{index + 1}.pdf").strip()
+                    pdf_base64 = str(document.get("pdf") or "")
+                    if not pdf_base64:
+                        continue
+                    source = base64.b64decode(pdf_base64, validate=True)
+                    output = BytesIO()
+                    with BytesIO(source) as input_file:
+                        writer = IncrementalPdfFileWriter(input_file)
+                        seal_width = 350
+                        seal_height = 72
+                        seal_path = cert_dir / f"selo-assinatura-{index + 1}.pdf"
+                        seal_canvas = canvas.Canvas(str(seal_path), pagesize=(seal_width, seal_height))
+                        logo_path = ROOT / "logo.png"
+                        if logo_path.is_file():
+                            seal_canvas.drawImage(
+                                ImageReader(str(logo_path)),
+                                8,
+                                9,
+                                width=54,
+                                height=54,
+                                preserveAspectRatio=True,
+                                anchor="c",
+                                mask="auto",
+                            )
+                        signed_at = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                        seal_canvas.setFillColorRGB(0, 0.51, 0.64)
+                        seal_canvas.setFont("Helvetica-Bold", 9)
+                        seal_canvas.drawString(70, 55, "ASSINADO DIGITALMENTE")
+                        seal_canvas.setFillColorRGB(0.20, 0.20, 0.20)
+                        seal_canvas.setFont("Helvetica-Bold", 8)
+                        seal_canvas.drawString(70, 42, "ANTONIO LUCAS TRIBURTINO")
+                        seal_canvas.setFont("Helvetica", 8)
+                        seal_canvas.drawString(70, 30, "CNPJ 17.601.076/0001-75")
+                        seal_canvas.drawString(70, 18, signed_at)
+                        seal_canvas.save()
+                        seal_style = StaticStampStyle(
+                            background=content.ImportedPdfPage(str(seal_path), page_ix=0),
+                            border_width=0,
+                            background_opacity=1,
+                        )
+                        field_spec = SigFieldSpec(
+                            sig_field_name=f"AssinaturaDigital{index + 1}",
+                            on_page=-1,
+                            box=((612 - seal_width) / 2, 18, (612 + seal_width) / 2, 18 + seal_height),
+                        )
+                        PdfSigner(
+                            PdfSignatureMetadata(
+                                field_name=f"AssinaturaDigital{index + 1}",
+                                name="ANTONIO LUCAS TRIBURTINO",
+                                location="Marília/SP",
+                                reason="Assinatura digital do laudo técnico",
+                            ),
+                            signer=signer,
+                            stamp_style=seal_style,
+                            new_field_spec=field_spec,
+                        ).sign_pdf(writer, output=output)
+                        seal_path.unlink(missing_ok=True)
+                    signed_documents.append({
+                        "filename": filename,
+                        "pdf": base64.b64encode(output.getvalue()).decode("ascii"),
+                        "sha256": hashlib.sha256(output.getvalue()).hexdigest(),
+                    })
+                if len(signed_documents) != len(documents):
+                    return self.send_json(400, {"error": "Um ou mais PDFs possuem conteúdo inválido."})
+                return self.send_json(200, {"ok": True, "documents": signed_documents})
+            except Exception as exc:
+                print(f"[AcquaTEC] Erro ao assinar PDFs: {type(exc).__name__}: {exc}", flush=True)
+                return self.send_json(500, {"error": "Não foi possível assinar o lote de PDFs."})
+
         if urlparse(self.path).path == "/api/restore":
             try:
                 length = int(self.headers.get("Content-Length", "0"))

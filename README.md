@@ -8,7 +8,7 @@ Aplicação local para cadastro de clientes, importação de medições de quali
 - Navegador moderno
 - Conexão com a internet para carregar jsPDF e JSZip pelas CDNs
 
-O backend usa apenas a biblioteca padrão do Python e SQLite. Não é necessário instalar pacotes Python.
+O backend usa a biblioteca padrão do Python e SQLite. Para assinatura digital, instale também os pacotes descritos em `requirements-sign.txt`.
 
 ## Iniciar no Windows
 
@@ -21,6 +21,32 @@ py backend\app.py
 Ou abra `iniciar_windows.bat`. Acesse [http://127.0.0.1:8765](http://127.0.0.1:8765).
 
 Para encerrar, pressione `Ctrl+C` no terminal em que o servidor está rodando.
+
+## Assinatura digital em lote
+
+O gerador pode assinar cada PDF antes de montá-lo no ZIP. Marque **Assinar PDFs com certificado digital** na etapa de geração.
+
+Instale as dependências de assinatura:
+
+```powershell
+py -3 -m pip install -r requirements-sign.txt
+```
+
+Configure o certificado em uma máquina privada:
+
+1. Crie `dados\certificados\`.
+2. Copie o certificado A1 como `dados\certificados\certificado.pfx`.
+3. Crie `dados\certificados\config.json` com o formato:
+
+```json
+{
+  "password": "SENHA_DO_CERTIFICADO"
+}
+```
+
+A pasta `dados/certificados/` é ignorada pelo Git. Nunca envie o PFX ou a configuração de senha para o repositório.
+
+O selo impresso usa a logo do sistema e é centralizado na parte inferior da última página. Ele contém “Assinado digitalmente”, o signatário, o CNPJ e a data/hora. Além do selo visual, o PDF recebe uma assinatura criptográfica ICP-Brasil reconhecida por leitores compatíveis.
 
 ## Iniciar no Linux
 
@@ -79,6 +105,7 @@ O histórico de geração de PDFs ainda é salvo no armazenamento local do naveg
 - `POST /api/measurements` — grava um lote de medições
 - `GET /api/measurement-imports` — lista lotes importados
 - `POST /api/restore` — substitui os dados cadastrados pelos dados de um backup completo
+- `POST /api/sign-pdfs` — assina em lote os PDFs enviados no corpo da requisição
 
 Os filtros de histórico estão disponíveis pela API; a tela de dashboards e seleção de períodos ainda não está implementada.
 

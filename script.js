@@ -193,7 +193,8 @@ document.getElementById('generate').onclick = async () => {
         msg('generateStatus', 'Gerando documentos. Aguarde...');
         const { jsPDF } = window.jspdf, zip = new JSZip();
         const logoBase64 = await obterLogoBase64();
-        measurements.forEach((row, index) => {
+        const pdfDocuments = [];
+        for (const [index, row] of measurements.entries()) {
             let client = clients.find(c => c.id === mapping[index]) || {}, d = dateInfo(row);
             const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'letter' }); doc.setFont('helvetica', 'normal');
             doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 131, 163); doc.addImage(logoBase64, 'PNG', 146, 6, 55, 36); doc.setFontSize(13);
@@ -217,8 +218,36 @@ document.getElementById('generate').onclick = async () => {
             doc.setFont('helvetica', 'bold'); doc.text('Data da próxima análise: ' + d.next, 15, y);
             doc.setFontSize(10); doc.setTextColor(0, 131, 163); doc.text('________________ Acqua TEC Análises ________________', 108, 245, { align: 'center' });
             let safe = (client.Cliente || 'Cliente_' + (index + 1)).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9_-]+/g, '_');
-            zip.file(`Laudo_${safe}.pdf`, doc.output('arraybuffer'));
-        });
+            const pdfBuffer = doc.output('arraybuffer');
+            pdfDocuments.push({ filename: `Laudo_${safe}.pdf`, pdf: pdfBuffer });
+        }
+        if (document.getElementById('signGeneratedPdfs').checked) {
+            msg('generateStatus', 'Assinando documentos com o certificado digital...');
+            const documents = pdfDocuments.map(item => {
+                const bytes = new Uint8Array(item.pdf);
+                let binary = '';
+                const chunkSize = 0x8000;
+                for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+                    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+                }
+                return { filename: item.filename, pdf: btoa(binary) };
+            });
+            const response = await fetch('/api/sign-pdfs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ documents })
+            });
+            const detail = await response.json().catch(() => ({}));
+            if (!response.ok) throw Error(detail.error || 'Não foi possível assinar os PDFs.');
+            for (const item of detail.documents) {
+                const binary = atob(item.pdf);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                zip.file(item.filename, bytes);
+            }
+        } else {
+            for (const item of pdfDocuments) zip.file(item.filename, item.pdf);
+        }
         const blob = await zip.generateAsync({ type: 'blob' }), url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = 'Pacote_Laudos_Acqua_TEC.zip'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 3000);
         generated += measurements.length; updateMetrics();
         let hist = JSON.parse(localStorage.getItem('acquatec_history') || '[]');
