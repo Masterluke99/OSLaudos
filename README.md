@@ -28,6 +28,8 @@ O gerador pode assinar cada PDF antes de montá-lo no ZIP. Marque **Assinar PDFs
 
 No menu lateral, a opção **Certificado digital** abre a pasta privada usada pelo sistema. Pela pasta, adicione ou substitua `certificado.pfx` e `config.json` manualmente.
 
+Ao abrir essa opção, o sistema verifica automaticamente se o PFX e o arquivo de configuração estão presentes e exibe o estado na própria tela.
+
 Instale as dependências de assinatura:
 
 ```powershell
