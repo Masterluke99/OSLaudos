@@ -42,7 +42,10 @@ function go(p) {
 }
 document.querySelectorAll('.nav button').forEach(b => b.onclick = () => {
     go(b.dataset.page);
-    if (b.dataset.page === 'certificado') openCertificateFolder();
+    if (b.dataset.page === 'certificado') {
+        openCertificateFolder();
+        updateCertificateStatus();
+    }
 });
 
 async function openCertificateFolder() {
