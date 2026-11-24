@@ -43,4 +43,11 @@ O banco fica em `dados\acquatec.db`. Use **Dados e backup** para exportar ou res
 
 ## Linux
 
-Execute `bash iniciar_linux.sh` na pasta do projeto e abra <http://127.0.0.1:8765>. O executável Linux deve ser criado e usado no próprio Linux.
+Na pasta do projeto, execute:
+
+```bash
+chmod +x iniciar_linux.sh
+./iniciar_linux.sh
+```
+
+O sistema abre em <http://127.0.0.1:8765>. O executável Linux deve ser criado e usado no próprio Linux.
