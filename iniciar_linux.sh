@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
-set -e
-cd "$(dirname "$0")"
+set -euo pipefail
 
-if ! command -v python3 >/dev/null 2>&1; then
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+
+if command -v python3 >/dev/null 2>&1; then
+    PYTHON_BIN="python3"
+elif command -v python >/dev/null 2>&1; then
+    PYTHON_BIN="python"
+else
     echo "Python 3 nao foi encontrado. Instale o Python 3 e tente novamente." >&2
     exit 1
 fi
 
-exec python3 backend/app.py
+exec "$PYTHON_BIN" backend/app.py

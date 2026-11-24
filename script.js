@@ -375,13 +375,17 @@ async function obterLogoBase64() {
         throw new Error('Elemento da logo não encontrado.');
     }
 
-    if (!img.complete || !img.naturalWidth) {
+    if (!img.complete) {
         await new Promise((resolve, reject) => {
             img.onload = resolve;
             img.onerror = () => reject(
                 new Error('Não foi possível carregar a logo.')
             );
         });
+    }
+
+    if (!img.naturalWidth) {
+        throw new Error('Não foi possível carregar a logo.');
     }
 
     // Verifica se a imagem está acessível na mesma origem
