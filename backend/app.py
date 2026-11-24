@@ -230,7 +230,19 @@ class AcquaHandler(SimpleHTTPRequestHandler):
                     from reportlab.graphics.shapes import Drawing
                     from reportlab.graphics import renderPDF
                 except ImportError:
-                    return self.send_json(500, {"error": "Dependências de assinatura não instaladas. Execute: py -3 -m pip install -r requirements-sign.txt"})
+                    if sys.platform == "win32":
+                        install_command = "py -3 -m pip install -r requirements-sign.txt"
+                    else:
+                        install_command = (
+                            "python3 -m venv .venv && "
+                            ".venv/bin/python -m pip install -r requirements-sign.txt"
+                        )
+                    return self.send_json(500, {
+                        "error": (
+                            "Dependências de assinatura não instaladas. Na pasta do projeto, "
+                            f"execute: {install_command}. Depois, reinicie o sistema."
+                        )
+                    })
 
                 signer = signers.SimpleSigner.load_pkcs12(
                     pfx_file=str(pfx_path),

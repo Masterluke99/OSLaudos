@@ -5,4 +5,5 @@ dados/certificados/
 __pycache__/
 dist/
 .venv-build/
+.venv/
 build/

@@ -25,7 +25,19 @@ A geração de PDF/ZIP usa bibliotecas carregadas da internet; é necessária co
 ## Recursos opcionais
 
 - **Contratos:** gere um contrato individual pela seção **Contratos**. Preencha os dados do representante legal no cadastro do cliente.
-- **Assinatura digital:** instale as dependências com `py -3 -m pip install -r requirements-sign.txt`. Na seção **Certificado digital**, abra a pasta indicada e coloque nela `certificado.pfx` e `config.json`:
+- **Assinatura digital:** instale as dependências conforme o sistema:
+
+  - Windows: `py -3 -m pip install -r requirements-sign.txt`.
+  - Linux: na pasta do projeto, execute:
+
+    ```bash
+    python3 -m venv .venv
+    .venv/bin/python -m pip install -r requirements-sign.txt
+    ```
+
+    Se `python3 -m venv` não estiver disponível, instale o pacote `python3-venv` pela distribuição Linux e repita os comandos. Depois, inicie o sistema com `bash iniciar_linux.sh`; ele usará o ambiente `.venv`.
+
+  Na seção **Certificado digital**, abra a pasta indicada e coloque nela `certificado.pfx` e `config.json`:
 
   ```json
   {
