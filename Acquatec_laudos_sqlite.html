@@ -195,6 +195,7 @@
                                     <th>Linha</th>
                                     <th>Nome na planilha semanal</th>
                                     <th>Cadastro vinculado</th>
+                                    <th>Laudo individual</th>
                                 </tr>
                             </thead>
                             <tbody id="mappingBody"></tbody>
@@ -330,6 +331,15 @@
                         <button class="btn" type="button" onclick="updateCertificateStatus()">Atualizar status</button>
                     </div>
                     <div id="certificateFolderStatus" class="statusbox"></div>
+                    <div class="cardhead" style="margin-top:20px">
+                        <div><b>Assinar documento PDF</b><small>Adicione um PDF para aplicar a assinatura digital e o selo visual</small></div>
+                    </div>
+                    <div class="actions">
+                        <input id="signPdfFile" type="file" accept="application/pdf,.pdf">
+                        <button class="btn primary" type="button" onclick="signUploadedPdf()">Assinar e baixar PDF</button>
+                    </div>
+                    <div class="notice">O documento original não será alterado. O PDF assinado será baixado com o sufixo <code>_assinado</code>. Limite: 35 MB por arquivo.</div>
+                    <div id="signPdfStatus" class="statusbox"></div>
                     <div class="cardhead" style="margin-top:20px">
                         <div><b>Validar PDF assinado</b><small>Verifica integridade, certificado e assinatura</small></div>
                     </div>

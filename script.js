@@ -110,6 +110,50 @@ async function verifySignedPdf() {
         msg('certificateVerifyStatus', error.message, 'err');
     }
 }
+
+async function signUploadedPdf() {
+    try {
+        const input = document.getElementById('signPdfFile');
+        const file = input.files[0];
+        if (!file) throw Error('Selecione um PDF para assinar.');
+        if (!file.name.toLowerCase().endsWith('.pdf')) throw Error('Selecione um arquivo com extensão PDF.');
+        if (file.size > 35 * 1024 * 1024) throw Error('O PDF excede o limite de 35 MB.');
+
+        msg('signPdfStatus', 'Assinando documento com o certificado digital...');
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        let binary = '';
+        const chunkSize = 0x8000;
+        for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+            binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+        }
+        const response = await fetch('/api/sign-pdfs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ documents: [{ filename: file.name, pdf: btoa(binary) }] })
+        });
+        const detail = await response.json().catch(() => ({}));
+        if (!response.ok) throw Error(detail.error || 'Não foi possível assinar o PDF.');
+        if (!detail.documents || detail.documents.length !== 1 || !detail.documents[0].pdf) {
+            throw Error('O servidor não retornou o PDF assinado.');
+        }
+
+        const signedBinary = atob(detail.documents[0].pdf);
+        const signedBytes = new Uint8Array(signedBinary.length);
+        for (let index = 0; index < signedBinary.length; index++) {
+            signedBytes[index] = signedBinary.charCodeAt(index);
+        }
+        const blob = new Blob([signedBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${file.name.slice(0, -4)}_assinado.pdf`;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 3000);
+        msg('signPdfStatus', `PDF assinado e baixado: ${link.download}`);
+    } catch (error) {
+        msg('signPdfStatus', error.message, 'err');
+    }
+}
 document.getElementById('clock').textContent = new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' });
 function msg(id, text, type = 'ok') { let e = document.getElementById(id); e.className = 'statusbox ' + type; e.textContent = text }
 function norm(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim() }
@@ -249,10 +293,183 @@ document.getElementById('saveMeasurements').onclick = async () => {
     }
 };
 function bestMatch(name) { let n = norm(name); let exact = clients.find(c => norm(c.Cliente) === n); if (exact) return exact.id; let partial = clients.find(c => n && (n.includes(norm(c.Cliente)) || norm(c.Cliente).includes(n))); return partial ? partial.id : '' }
-function buildMapping() { mapping = measurements.map(r => bestMatch(val(r, 'Cliente'))); let body = document.getElementById('mappingBody'); body.innerHTML = ''; measurements.forEach((r, i) => { let tr = document.createElement('tr'), opts = '<option value="">— Selecione o cliente —</option>' + clients.map(c => `<option value="${esc(c.id)}" ${mapping[i] === c.id ? 'selected' : ''}>${esc(c.Cliente)}${c.Endereco ? ' · ' + esc(c.Endereco) : ''}</option>`).join(''); tr.innerHTML = `<td>${i + 1}</td><td><b>${esc(val(r, 'Cliente') || 'Não informado')}</b></td><td><select data-index="${i}">${opts}</select></td>`; body.appendChild(tr) }); body.querySelectorAll('select').forEach(s => s.onchange = () => { mapping[Number(s.dataset.index)] = s.value; updateSaveMeasurementsButton(); }); updateSaveMeasurementsButton() }
+function buildMapping() {
+    mapping = measurements.map(row => bestMatch(val(row, 'Cliente')));
+    const body = document.getElementById('mappingBody');
+    body.innerHTML = '';
+    measurements.forEach((row, index) => {
+        const tr = document.createElement('tr');
+        const options = '<option value="">— Selecione o cliente —</option>' + clients.map(client =>
+            `<option value="${esc(client.id)}" ${mapping[index] === client.id ? 'selected' : ''}>${esc(client.Cliente)}${client.Endereco ? ' · ' + esc(client.Endereco) : ''}</option>`
+        ).join('');
+        tr.innerHTML = `<td>${index + 1}</td><td><b>${esc(val(row, 'Cliente') || 'Não informado')}</b></td><td><select data-index="${index}">${options}</select></td><td><button class="btn primary" type="button" onclick="generateAndSignLaudo(${index})">Gerar e assinar PDF</button><div id="laudoStatus${index}" class="statusbox"></div></td>`;
+        body.appendChild(tr);
+    });
+    body.querySelectorAll('select').forEach(select => select.onchange = () => {
+        const index = Number(select.dataset.index);
+        mapping[index] = select.value;
+        const status = document.getElementById(`laudoStatus${index}`);
+        status.className = 'statusbox';
+        status.textContent = '';
+        updateSaveMeasurementsButton();
+    });
+    updateSaveMeasurementsButton();
+}
 function parseNum(v) { return parseFloat(String(v ?? '').replace(',', '.')) }
 function diagnose(v, min, max) { let n = parseNum(v); if (!String(v ?? '').trim() || Number.isNaN(n)) return 'Não informado'; return n >= min && n <= max ? 'Conforme' : 'Fora do Padrão' }
 function dateInfo(row) { let raw = val(row, 'Carimbo de data/hora', 'Data/Hora', 'Data'); let d = new Date(); if (raw) { let m = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/); if (m) d = new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0)); else { let p = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})/); if (p) d = new Date(+p[3], +p[2] - 1, +p[1]) } } let next = new Date(d); next.setDate(next.getDate() + 30); let fmt = x => x.toLocaleDateString('pt-BR'); return { date: fmt(d), time: d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h'), next: fmt(next) } }
+function createLaudoPdf(row, index, logoBase64) {
+    const client = clients.find(item => item.id === mapping[index]);
+    if (!client) throw Error('Vincule esta medição a um cliente antes de gerar o laudo.');
+    const d = dateInfo(row);
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'letter' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 131, 163);
+    doc.addImage(logoBase64, 'PNG', 146, 6, 55, 36);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 131, 163);
+
+    doc.text('RELATÓRIO E MONITORAMENTO', 105, 19, { align: 'center' });
+    doc.text('CONTROLE DE QUALIDADE', 105, 26, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setTextColor(51, 51, 51);
+    const line = (label, value, y, lx = 15, vx = 45) => {
+        doc.setFont('helvetica', 'bold');
+        doc.text(label, lx, y);
+        doc.setFont('helvetica', 'normal');
+        doc.text(String(value || 'Não informado'), vx, y, { maxWidth: 155 });
+    };
+    line('Cliente:', client.Cliente, 34, 15, 30);
+    line('Endereço:', client.Endereco, 40, 15, 34);
+    line('CNPJ:', client.CNPJ, 46, 15, 27);
+    line('Local da Coleta:', val(row, 'Local_Coleta', 'Local de Coleta') || 'Piscina Adulto', 52, 15, 44);
+    line('Data / Hora:', d.date + ' às ' + d.time, 58, 15, 37);
+    line('Responsável Técnico:', client.Responsavel_Tecnico || 'Não informado', 64, 15, 53);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 131, 163);
+    doc.text('RESULTADOS DA ANÁLISE', 15, 82);
+    doc.setFillColor(0, 131, 163);
+    doc.rect(15, 86, 185, 8, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.text('Parâmetro', 18, 91.5);
+    doc.text('Resultados', 70, 91.5);
+    doc.text('Valor de Referência', 115, 91.5);
+    doc.text('Diagnóstico', 165, 91.5);
+    const chlorine = val(row, 'Cloro Livre');
+    const ph = val(row, 'PH', 'pH');
+    const alk = val(row, 'Alcalinidade');
+    const hard = val(row, 'Dureza Total', 'Dureza Cálcica');
+    const temp = val(row, 'Temperatura');
+    const visual = val(row, 'Aspecto Visual');
+    const params = [
+        { n: 'Cloro Livre', v: chlorine, ref: '1.0 – 3.0', diag: diagnose(chlorine, 1, 3) },
+        { n: 'PH', v: ph, ref: '7.4 – 7.8', diag: diagnose(ph, 7.4, 7.8) },
+        { n: 'Alcalinidade', v: alk, ref: '80 - 120', diag: diagnose(alk, 80, 120) },
+        { n: 'Dureza Cálcica', v: hard, ref: '200 - 400', diag: diagnose(hard, 200, 400) },
+        { n: 'Temperatura', v: temp, ref: '26 - 32', diag: temp ? diagnose(temp, 26, 32) : 'Não informado' },
+        { n: 'Aspecto Visual', v: visual, ref: 'límpida', diag: visual ? (norm(visual).includes('limp') ? 'Conforme' : 'Verificar') : 'Não informado' }
+    ];
+    let y = 94;
+    doc.setFont('helvetica', 'normal');
+    params.forEach(parameter => {
+        doc.setTextColor(51, 51, 51);
+        doc.text(parameter.n, 18, y + 5);
+        doc.text(String(parameter.v || 'Não informado'), 70, y + 5);
+        doc.text(parameter.ref, 115, y + 5);
+        doc.setFontSize(8.5);
+        doc.text(parameter.diag, 165, y + 5);
+        doc.setFontSize(10);
+        doc.setDrawColor(224, 224, 224);
+        doc.line(15, y + 8, 200, y + 8);
+        y += 8;
+    });
+    y += 13;
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 131, 163);
+    doc.text('AVALIAÇÃO TÉCNICA', 15, y);
+    y += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 51, 51);
+    const note = val(row, 'Avaliação Técnica', 'Observações', 'Observacao');
+    const allOk = params.every(parameter => parameter.diag === 'Conforme');
+    const defaultText = allOk
+        ? 'A água analisada apresentou parâmetros dentro das faixas recomendadas para utilização recreativa, não sendo observadas irregularidades que comprometam a segurança ou o conforto dos usuários.'
+        : '. Foram identificados parâmetros que requerem avaliação. Consulte os resultados apresentados e registre as medidas corretivas pertinentes.';
+    const split = doc.splitTextToSize((note ? note + ' ' : '') + defaultText, 185);
+    doc.text(split, 15, y);
+    y += split.length * 5 + 7;
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 131, 163);
+    doc.text('STATUS DA ÁGUA', 15, y);
+    y += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 51, 51);
+    doc.text(allOk
+        ? 'Piscina dentro dos padrões avaliados.'
+        : 'Existem parâmetros não conformes ou não informados. Avaliação complementar necessária.', 15, y, { maxWidth: 185 });
+    y += 9;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Data da próxima análise: ' + d.next, 15, y);
+    doc.setFontSize(10);
+    doc.setTextColor(0, 131, 163);
+    doc.text('________________ Acqua TEC Análises ________________', 108, 245, { align: 'center' });
+    const safe = (client.Cliente || 'Cliente_' + (index + 1))
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9_-]+/g, '_');
+    return { filename: `Laudo_${safe}.pdf`, pdf: doc.output('arraybuffer') };
+}
+async function generateAndSignLaudo(index) {
+    const statusId = `laudoStatus${index}`;
+    try {
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+            throw Error('A biblioteca de PDF não carregou. Verifique a conexão e recarregue a página.');
+        }
+        if (!measurements[index]) throw Error('A medição selecionada não está mais disponível.');
+        if (!mapping[index]) throw Error('Vincule esta medição a um cliente antes de gerar o laudo.');
+
+        msg(statusId, 'Gerando e assinando o laudo...');
+        const logoBase64 = await obterLogoBase64();
+        const item = createLaudoPdf(measurements[index], index, logoBase64);
+        const bytes = new Uint8Array(item.pdf);
+        let binary = '';
+        const chunkSize = 0x8000;
+        for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+            binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+        }
+        const response = await fetch('/api/sign-pdfs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ documents: [{ filename: item.filename, pdf: btoa(binary) }] })
+        });
+        const detail = await response.json().catch(() => ({}));
+        if (!response.ok) throw Error(detail.error || 'Não foi possível assinar o laudo.');
+        if (!detail.documents || detail.documents.length !== 1 || !detail.documents[0].pdf) {
+            throw Error('O servidor não retornou o laudo assinado.');
+        }
+
+        const signedBinary = atob(detail.documents[0].pdf);
+        const signedBytes = new Uint8Array(signedBinary.length);
+        for (let byteIndex = 0; byteIndex < signedBinary.length; byteIndex++) {
+            signedBytes[byteIndex] = signedBinary.charCodeAt(byteIndex);
+        }
+        const url = URL.createObjectURL(new Blob([signedBytes], { type: 'application/pdf' }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = item.filename.replace(/\.pdf$/i, '_assinado.pdf');
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 3000);
+        generated++;
+        updateMetrics();
+        msg(statusId, `Laudo assinado e baixado: ${link.download}`);
+    } catch (error) {
+        msg(statusId, error.message, 'err');
+    }
+}
 document.getElementById('generate').onclick = async () => {
     let status = document.getElementById('generateStatus');
     try {
@@ -263,34 +480,7 @@ document.getElementById('generate').onclick = async () => {
         msg('generateStatus', 'Gerando documentos. Aguarde...');
         const { jsPDF } = window.jspdf, zip = new JSZip();
         const logoBase64 = await obterLogoBase64();
-        const pdfDocuments = [];
-        for (const [index, row] of measurements.entries()) {
-            let client = clients.find(c => c.id === mapping[index]) || {}, d = dateInfo(row);
-            const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'letter' }); doc.setFont('helvetica', 'normal');
-            doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 131, 163); doc.addImage(logoBase64, 'PNG', 146, 6, 55, 36); doc.setFontSize(13);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(0, 131, 163);
-
-            doc.text('RELATÓRIO E MONITORAMENTO', 105, 19, { align: 'center' });
-            doc.text('CONTROLE DE QUALIDADE', 105, 26, { align: 'center' });;
-            doc.setFontSize(10); doc.setTextColor(51, 51, 51);
-            const line = (label, value, y, lx = 15, vx = 45) => { doc.setFont('helvetica', 'bold'); doc.text(label, lx, y); doc.setFont('helvetica', 'normal'); doc.text(String(value || 'Não informado'), vx, y, { maxWidth: 155 }) };
-            line('Cliente:', client.Cliente, 34, 15, 30); line('Endereço:', client.Endereco, 40, 15, 34); line('CNPJ:', client.CNPJ, 46, 15, 27); line('Local da Coleta:', val(row, 'Local_Coleta', 'Local de Coleta') || 'Piscina Adulto', 52, 15, 44); line('Data / Hora:', d.date + ' às ' + d.time, 58, 15, 37); line('Responsável Técnico:', client.Responsavel_Tecnico || 'Não informado', 64, 15, 53);
-            doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 131, 163); doc.text('RESULTADOS DA ANÁLISE', 15, 82);
-            doc.setFillColor(0, 131, 163); doc.rect(15, 86, 185, 8, 'F'); doc.setTextColor(255, 255, 255); doc.text('Parâmetro', 18, 91.5); doc.text('Resultados', 70, 91.5); doc.text('Valor de Referência', 115, 91.5); doc.text('Diagnóstico', 165, 91.5);
-            const chlorine = val(row, 'Cloro Livre'), ph = val(row, 'PH', 'pH'), alk = val(row, 'Alcalinidade'), hard = val(row, 'Dureza Total', 'Dureza Cálcica'), temp = val(row, 'Temperatura'), visual = val(row, 'Aspecto Visual');
-            const params = [{ n: 'Cloro Livre', v: chlorine, ref: '1.0 – 3.0', diag: diagnose(chlorine, 1, 3) }, { n: 'PH', v: ph, ref: '7.4 – 7.8', diag: diagnose(ph, 7.4, 7.8) }, { n: 'Alcalinidade', v: alk, ref: '80 - 120', diag: diagnose(alk, 80, 120) }, { n: 'Dureza Cálcica', v: hard, ref: '200 - 400', diag: diagnose(hard, 200, 400) }, { n: 'Temperatura', v: temp, ref: '26 - 32', diag: temp ? diagnose(temp, 26, 32) : 'Não informado' }, { n: 'Aspecto Visual', v: visual, ref: 'límpida', diag: visual ? (norm(visual).includes('limp') ? 'Conforme' : 'Verificar') : 'Não informado' }];
-            let y = 94; doc.setFont('helvetica', 'normal'); params.forEach(p => { doc.setTextColor(51, 51, 51); doc.text(p.n, 18, y + 5); doc.text(String(p.v || 'Não informado'), 70, y + 5); doc.text(p.ref, 115, y + 5); doc.setFontSize(8.5); doc.text(p.diag, 165, y + 5); doc.setFontSize(10); doc.setDrawColor(224, 224, 224); doc.line(15, y + 8, 200, y + 8); y += 8 });
-            y += 13; doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 131, 163); doc.text('AVALIAÇÃO TÉCNICA', 15, y); y += 6; doc.setFont('helvetica', 'normal'); doc.setTextColor(51, 51, 51);
-            let note = val(row, 'Avaliação Técnica', 'Observações', 'Observacao'); let allOk = params.every(p => p.diag === 'Conforme'); let defaultText = allOk ? 'A água analisada apresentou parâmetros dentro das faixas recomendadas para utilização recreativa, não sendo observadas irregularidades que comprometam a segurança ou o conforto dos usuários.' : '. Foram identificados parâmetros que requerem avaliação. Consulte os resultados apresentados e registre as medidas corretivas pertinentes.';
-            let split = doc.splitTextToSize((note ? note + ' ' : '') + (defaultText), 185); doc.text(split, 15, y); y += split.length * 5 + 7;
-            doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 131, 163); doc.text('STATUS DA ÁGUA', 15, y); y += 6; doc.setFont('helvetica', 'normal'); doc.setTextColor(51, 51, 51); doc.text(allOk ? 'Piscina dentro dos padrões avaliados.' : 'Existem parâmetros não conformes ou não informados. Avaliação complementar necessária.', 15, y, { maxWidth: 185 }); y += 9;
-            doc.setFont('helvetica', 'bold'); doc.text('Data da próxima análise: ' + d.next, 15, y);
-            doc.setFontSize(10); doc.setTextColor(0, 131, 163); doc.text('________________ Acqua TEC Análises ________________', 108, 245, { align: 'center' });
-            let safe = (client.Cliente || 'Cliente_' + (index + 1)).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9_-]+/g, '_');
-            const pdfBuffer = doc.output('arraybuffer');
-            pdfDocuments.push({ filename: `Laudo_${safe}.pdf`, pdf: pdfBuffer });
-        }
+        const pdfDocuments = measurements.map((row, index) => createLaudoPdf(row, index, logoBase64));
         if (document.getElementById('signGeneratedPdfs').checked) {
             msg('generateStatus', 'Assinando documentos com o certificado digital...');
             const documents = pdfDocuments.map(item => {

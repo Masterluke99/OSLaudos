@@ -46,6 +46,8 @@ A geração de PDF/ZIP usa bibliotecas carregadas da internet; é necessária co
   ```
 
   Use **Atualizar status** depois de copiar os arquivos. Nunca compartilhe o certificado nem a senha. Se usar o executável portátil, mantenha os arquivos dentro da pasta `dados\certificados` ao lado do executável; ao executar pelo código-fonte, use `dados\certificados` na pasta do projeto.
+  Na seção **Certificado digital**, também é possível selecionar um PDF de até 35 MB e baixar uma cópia assinada. O original não é alterado; o arquivo de saída recebe o sufixo `_assinado`.
+  Na conferência das medições, use **Gerar e assinar PDF** na linha desejada para baixar somente aquele laudo assinado, sem gerar o pacote ZIP.
 - **Executável portátil:** mantenha a pasta `dist\AcquaTEC` completa; o banco e os certificados ficam dentro dela.
 - **Instaladores:** os scripts `criar_instalador_windows.bat` e `criar_instalador_linux.sh` permitem gerar pacotes de distribuição. Certificados e senhas não são incluídos nos instaladores.
 
