@@ -317,7 +317,7 @@ function buildMapping() {
 }
 function parseNum(v) { return parseFloat(String(v ?? '').replace(',', '.')) }
 function diagnose(v, min, max) { let n = parseNum(v); if (!String(v ?? '').trim() || Number.isNaN(n)) return 'Não informado'; return n >= min && n <= max ? 'Conforme' : 'Fora do Padrão' }
-function dateInfo(row) { let raw = val(row, 'Carimbo de data/hora', 'Data/Hora', 'Data'); let d = new Date(); if (raw) { let m = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/); if (m) d = new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0)); else { let p = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})/); if (p) d = new Date(+p[3], +p[2] - 1, +p[1]) } } let next = new Date(d); next.setDate(next.getDate() + 30); let fmt = x => x.toLocaleDateString('pt-BR'); return { date: fmt(d), time: d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h'), next: fmt(next) } }
+function dateInfo(row) { let raw = val(row, 'Carimbo de data/hora', 'Data/Hora', 'Data'); let d = new Date(); if (raw) { let m = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/); if (m) d = new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0)); else { let p = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})/); if (p) d = new Date(+p[3], +p[2] - 1, +p[1]) } } let next = new Date(d); next.setDate(next.getDate() + 30); let fmt = x => x.toLocaleDateString('pt-BR'); return { date: fmt(d), next: fmt(next) } }
 function createLaudoPdf(row, index, logoBase64) {
     const client = clients.find(item => item.id === mapping[index]);
     if (!client) throw Error('Vincule esta medição a um cliente antes de gerar o laudo.');
@@ -347,7 +347,7 @@ function createLaudoPdf(row, index, logoBase64) {
     line('Endereço:', client.Endereco, 40, 15, 34);
     line('CNPJ:', client.CNPJ, 46, 15, 27);
     line('Local da Coleta:', val(row, 'Local_Coleta', 'Local de Coleta') || 'Piscina Adulto', 52, 15, 44);
-    line('Data / Hora:', d.date + ' às ' + d.time, 58, 15, 37);
+    line('Data da Coleta:', d.date, 58, 15, 42);
     line('Responsável Técnico:', client.Responsavel_Tecnico || 'Não informado', 64, 15, 53);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(0, 131, 163);
